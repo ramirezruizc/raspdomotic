@@ -122,8 +122,8 @@ io.on("connection", (socket) => {
     console.log("📡 Iniciando stream...");
     streamingActive = true;
     //mqttClient.publish("esp01s/camara", "activar");
-    const topic = 'esp01s/camara'; // Cambia por el tópico de tu dispositivo Tasmota
-    const message = 'activar'; // Convertir a mayúsculas para Tasmota
+    const topic = 'esp01s/camara'; // Cambia por el tópico del dispositivo
+    const message = 'activar';
     publishMessage(topic, message);
     cameraViewers.add(socket.id);
     //activeViewers++;
@@ -238,10 +238,41 @@ app.get('/', (req, res) => {
   res.send('Servidor funcionando correctamente');
 });
 
+
+/*
 mongoose
     .connect(process.env.DB_URI)
     .then(db => console.log('DB is connected'))
     .catch(err => console.error(err));
+*/
+
+const connectWithRetry = () => {
+  console.log("🔄 Intentando conectar con MongoDB...");
+  mongoose
+    .connect(process.env.DB_URI, {
+      useNewUrlParser: true,
+      useUnifiedTopology: true,
+      serverSelectionTimeoutMS: 5000,
+      socketTimeoutMS: 45000,
+    })
+    .then(() => {
+      console.log("✅ Conectado a MongoDB");
+    })
+    .catch((err) => {
+      console.error("❌ Error conectando a MongoDB:", err);
+      console.log("⏳ Reintentando en 5 segundos...");
+      setTimeout(connectWithRetry, 5000); // Reintentar en 5 segundos
+    });
+};
+
+// Conectar al inicio
+connectWithRetry();
+
+// 🔄 Detectar desconexión y reconectar
+mongoose.connection.on("disconnected", () => {
+  console.error("⚠️ Se perdió la conexión con MongoDB. Intentando reconectar...");
+  connectWithRetry();
+});
 
 // Rutas
 app.use('/api/auth', authRoutes);
