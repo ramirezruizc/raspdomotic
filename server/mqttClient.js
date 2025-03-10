@@ -4,7 +4,7 @@ const mqtt = require('mqtt');
 const client = mqtt.connect('mqtt://192.168.1.4'); // Cambia por la IP del broker MQTT
 
 client.on('connect', () => {
-  console.log('Conectado al broker MQTT');
+  console.log('✅ Conectado al broker MQTT');
 });
 
 client.on('error', (err) => {

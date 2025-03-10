@@ -146,7 +146,7 @@ export default {
       try {
         const response = await api.post('/devices/set-alarma', { estado: this.alarma });
         if (!response.data.success) {
-          throw new Error(response.data.error || "Error desconocido");
+          throw new Error(response.data.message || "Error desconocido");
         }
       } catch (error) {
         console.error("❌ Error al cambiar la alarma:", error);

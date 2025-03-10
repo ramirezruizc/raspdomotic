@@ -147,7 +147,7 @@ const wss = new WebSocket.Server({ noServer: true });
 //Peticiones Socket.io con URL '/ws' se redirigen a WS puro
 server.on("upgrade", (request, socket, head) => {
   if (request.url === "/ws") {
-    console.log("🔄 Upgrade de conexión. Socket.io a WebSocket puro");
+    console.log("🔄 Update de conexión. Socket.io a WebSocket puro");
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit("connection", ws, request);
     });

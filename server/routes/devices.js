@@ -32,8 +32,14 @@ router.post('/set-alarma', authMiddleware, async (req, res) => {
     const { estado } = req.body;
 
     try {
-        await axios.post('http://localhost:1880/set-alarma', { estado });
+        const response = await axios.post('http://localhost:1880/set-alarma', { estado });
 
+        // Verificar si la respuesta de Node-RED contiene `success: true`
+        if (response.data.success) {
+            return res.json({ success: true, message: `Alarma actualizada a ${estado}` });
+        } else {
+            return res.status(400).json({ success: false, message: response.data.error || "Error desconocido en Node-RED" });
+        }
         /*
         // Recupera la instancia de Socket.IO desde la app
         const io = req.app.get("io");
