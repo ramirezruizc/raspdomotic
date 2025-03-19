@@ -58,6 +58,8 @@ const io = new Server(server, {
   }
 });
 
+app.set("io", io);
+
 /*
 // Configurar sesiones en Express
 app.use(session({
@@ -114,7 +116,7 @@ io.on("connection", (socket) => {
     console.log("📤 Enviando estado de la bombilla a todos los clientes:", newState);
 
     // Emitir el nuevo estado a todos los clientes
-    io.emit("bulb-status", { state: newState });
+    //io.emit("bulb-status", { state: newState });
   });
 
   // Control del número de visualizadores de streaming
@@ -197,6 +199,12 @@ wss.on("connection", (ws, request) => {
             case "alarm-triggered":
               console.log("🚨 Se ha producido una Alarma!");
               alarmTriggered = true;
+              break;
+            case "bulb-status":
+              io.emit("bulb-status", { state: data.state });
+              break;
+            case "alarm-status":
+              io.emit("alarm-status", { status: data.status });
               break;
             default:
               console.warn("⚠️ Acción desconocida recibida:", data.action);
@@ -284,4 +292,4 @@ server.listen(PORT, '0.0.0.0', () => {
   console.log(`Servidor ejecutándose en http://localhost:${PORT}`);
 });
 
-module.exports = { app, server, io };
+//module.exports = { app, server, io };

@@ -9,12 +9,15 @@ module.exports = defineConfig({
   },
   pwa: {
     name: 'RaspDomotic', // Aquí cambia el título
-    workboxPluginMode: 'GenerateSW', // Asegura que se genera automáticamente
+    /*workboxPluginMode: 'GenerateSW', // Asegura que se genera automáticamente
     workboxOptions: {
       skipWaiting: true,
       clientsClaim: true,
+    },*/
+    workboxPluginMode: "InjectManifest",
+    workboxOptions: {
+      swSrc: "./src/service-worker.js" // Aquí crearemos nuestro SW personalizado
     },
-    name: 'RaspDomotic',
     iconPaths: {
       favicon32: 'RD.ico',
       favicon16: 'RD.ico',
@@ -29,7 +32,7 @@ module.exports = defineConfig({
   },
   chainWebpack: config => {
     config.plugin('html').tap(args => {
-      args[0].title = 'RaspDomotic'; // ✅ Cambia el título correctamente
+      args[0].title = 'RaspDomotic';
       return args;
     });
   }

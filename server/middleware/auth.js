@@ -32,7 +32,7 @@ const authMiddleware = async (req, res, next) => {
             res.cookie("token", newToken, { httpOnly: true, sameSite: 'Strict' });
         }
 
-        req.user = user;
+        res.user = user;
         next();
     } catch (err) {
         res.status(401).json({ message: 'Acceso denegado: Token inválido o expirado' });

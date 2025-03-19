@@ -1,28 +1,21 @@
 <template>
   <div class="dashboard">
     <div class="logout">
-      <a href="#" @click.prevent="logout">Cerrar sesión</a>
+      <span v-if="authStore.user" class="user-name">
+        ¡Hola! <strong>{{ authStore.user }}</strong>
+      </span>
+      <a href="#" @click.prevent="logout" class="logout-link">Cerrar sesión</a>
     </div>
-    <h1>RaspDomotic Control</h1>
 
-    <!-- Botón para controlar la bombilla -->
-    <button @click="toggleBulb" :disabled="loading">
-      {{ bulbState === 'ON' ? 'Apagar Bombilla' : 'Encender Bombilla' }}
+    <h1>Dashboard</h1>
+
+    <button @click="toggleAlarma" :class="alarma ? 'btn-on' : 'btn-off'">
+      <i class="pi pi-power-off"></i>
     </button>
 
-    <!-- Mensaje sobre el estado de la bombilla -->
-    <p v-if="message">{{ message }}</p>
-
-    <!-- Toggle para activar/desactivar la alarma -->
-    <div class="toggle-container">
-      <span>Alarma:</span>
-      <label class="switch">
-        <input type="checkbox" v-model="alarma" @change="toggleAlarma">
-        <span class="slider"></span>
-      </label>
-    </div>
-
     <p>Estado actual de la alarma: <strong>{{ alarma ? "ACTIVADA" : "DESACTIVADA" }}</strong></p>
+
+    <hr class="separador"> <!-- 🔹 Separador estilizado -->
 
     <div>
       <button @click="toggleCamera">
@@ -32,7 +25,22 @@
       <div v-if="viendoCamara" class="camera-container">
         <img :src="frameActual" alt="Stream de la cámara">
       </div>
-    </div> 
+    </div>
+
+    <hr class="separador"> <!-- 🔹 Separador estilizado -->
+
+    <div class="toggle-container">
+      <span class="toggle-label">Salón:</span>
+
+      <!-- Toggle Switch -->
+      <label class="toggle-switch">
+        <input type="checkbox" v-model="bulbState" @change="toggleBulb" />
+        <span class="slider"></span>
+      </label>
+
+    <!-- Texto ON / OFF -->
+      <span class="toggle-label">{{ bulbState ? "ON" : "OFF" }}</span>
+    </div>
 
     <!-- ⚠️ Aviso de que la sesión expirará pronto -->
     <div v-if="showWarning" class="session-warning">
@@ -53,11 +61,16 @@
 <script>
 import api from '../api';
 import { io } from "socket.io-client";
+import { useAuthStore } from '../store/auth';
 
 export default {
+  setup() {
+    const authStore = useAuthStore();
+    return { authStore };
+  },
   data() {
     return {
-      bulbState: 'OFF',
+      bulbState: false, // false = apagado, true = encendido
       alarma: false,
       message: '',
       socket: null,
@@ -76,6 +89,7 @@ export default {
     };
   },
   async mounted() {
+    console.log("Usuario en Pinia al montar Dashboard:", this.authStore.user);
     this.resetSessionTimer(); // Inicia el temporizador de sesión
 
     try {
@@ -83,6 +97,13 @@ export default {
       this.alarma = response.data.estado;
     } catch (error) {
       console.error("❌ Error al obtener el estado de la alarma:", error);
+    }
+
+    try {
+      const response = await api.get('/devices/get-bulb');
+      this.bulbState = response.data.estado;
+    } catch (error) {
+      console.error("❌ Error al obtener el estado de la bombilla:", error);
     }
 
     this.socket = io(window.location.origin, {
@@ -101,6 +122,7 @@ export default {
     });
 
     this.socket.on("bulb-status", (data) => {
+      console.log("Estado de bombilla actualizado:", data);
       this.bulbState = data.state;
     });
 
@@ -124,34 +146,39 @@ export default {
     clearTimeout(this.warningTimeout);
   },
   methods: {
-    async toggleBulb() {
-      this.loading = true;
-      const newState = this.bulbState === 'ON' ? 'OFF' : 'ON';
-
-      try {
-        await api.post('/devices/toggle-bulb', { state: newState });
-        this.socket.emit("toggle-bulb", { state: newState });
-      } catch (error) {
-        console.error("Error al cambiar estado de la bombilla", error);
-      }
-      this.loading = false;
-    },
-
     async toggleAlarma() {
       const estadoPrevio = this.alarma;
+      this.alarma = !this.alarma;
       console.log("📤 Enviando evento toggle-alarm:", { status: this.alarma });
-
-      this.socket.emit("toggle-alarm", { status: this.alarma });
 
       try {
         const response = await api.post('/devices/set-alarma', { estado: this.alarma });
         if (!response.data.success) {
           throw new Error(response.data.message || "Error desconocido");
         }
+        this.socket.emit("toggle-alarm", { status: this.alarma });
       } catch (error) {
         console.error("❌ Error al cambiar la alarma:", error);
         this.alarma = estadoPrevio;
       }
+    },
+
+    async toggleBulb() {
+      const estadoPrevio = !this.bulbState;
+      const newState = this.bulbState === true ? 'ON' : 'OFF';
+      console.log("cambio de estado de bombilla a:", newState);
+
+      try {
+        const response = await api.post('/devices/toggle-bulb', { estado: newState });
+        if (!response.data.success) {
+          throw new Error(response.data.message || "Error desconocido");
+        }
+        //this.socket.emit("toggle-bulb", { state: this.bulbState });
+      } catch (error) {
+        console.error("❌ Error al cambiar estado de la bombilla", error);
+        this.bulbState = estadoPrevio;
+      }
+      this.loading = false;
     },
 
     toggleCamera() {
@@ -210,22 +237,40 @@ export default {
   margin-top: 50px;
 }
 
-/* Botón de cierre de sesión */
-.logout {
-  position: absolute;
-  top: 20px;
-  right: 20px;
+.separador {
+  width: 80%; /* En lugar de 100%, ocupa solo el 80% del contenido */
+  max-width: 600px; /* Limita el ancho máximo */
+  height: 2px;
+  background: linear-gradient(to right, #ccc, #666, #ccc);
+  margin: 20px auto; /* Centra horizontalmente */
+  display: block;
 }
 
-.logout a {
+/* 🔹 Ajustes para la esquina superior derecha */
+.logout {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  text-align: right;
+}
+
+.user-name {
+  font-size: 14px;
+  font-weight: bold;
+  display: block;
+}
+
+.logout-link {
   text-decoration: none;
   color: #007bff;
   font-size: 14px;
   font-weight: bold;
   cursor: pointer;
+  display: block;
 }
 
-.logout a:hover {
+.logout-link:hover {
+  text-decoration: underline;
   color: #0056b3;
 }
 
@@ -244,18 +289,36 @@ button:hover {
   background-color: #0056b3;
 }
 
-/* Aviso de sesión expirada */
-.session-warning {
-  position: fixed;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: red;
+/* Estado cuando el botón ALARMA está activado */
+.btn-on {
+  background-color: green !important;
   color: white;
-  padding: 10px 15px;
-  border-radius: 5px;
-  font-size: 14px;
-  font-weight: bold;
+  box-shadow: 0px 0px 15px rgba(0, 255, 0, 0.6); /* Brillo verde */
+}
+
+/* Estado cuando el botón ALARMA está apagado */
+.btn-off {
+  background-color: red !important;
+  color: white;
+  box-shadow: 0px 0px 15px rgba(255, 0, 0, 0.6); /* Brillo rojo */
+}
+
+/* Efecto de "presionado" cuando se hace clic */
+button:active {
+  transform: scale(0.9); /* Se reduce ligeramente */
+  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); /* Reduce sombra al presionar */
+}
+
+/* Animación de encendido y apagado */
+@keyframes pulsar {
+  0% { transform: scale(1); }
+  50% { transform: scale(1.05); }
+  100% { transform: scale(1); }
+}
+
+/* Aplica la animación cuando está activado */
+.btn-on {
+  animation: pulsar 0.5s infinite alternate;
 }
 
 /* Contenedor del interruptor de encendido/apagado */
@@ -266,14 +329,15 @@ button:hover {
   font-size: 18px;
 }
 
-.switch {
+/* Estilos del switch */
+.toggle-switch {
   position: relative;
   display: inline-block;
   width: 50px;
   height: 24px;
 }
 
-.switch input {
+.toggle-switch input {
   opacity: 0;
   width: 0;
   height: 0;
@@ -309,6 +373,31 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(26px);
+}
+
+/* 🔹 Estilo de la etiqueta (ON / OFF) */
+.toggle-label {
+  margin-left: 10px;
+  font-weight: bold;
+  font-size: 16px;
+}
+
+.toggle-label:first-child {
+  font-weight: bold;
+}
+
+/* Aviso de sesión expirada */
+.session-warning {
+  position: fixed;
+  bottom: 10px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: red;
+  color: white;
+  padding: 10px 15px;
+  border-radius: 5px;
+  font-size: 14px;
+  font-weight: bold;
 }
 
 /* Contenedor del stream de la cámara */
@@ -385,6 +474,6 @@ input {
 }
 
 .success {
-  color: green;
+  color: green !important;
 }
 </style>

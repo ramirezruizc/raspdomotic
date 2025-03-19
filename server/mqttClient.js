@@ -4,7 +4,7 @@ const options = {
   reconnectPeriod: 5 * 1000, // Intentar reconectar cada 5 segundos
   connectTimeout: 10 * 1000, // Tiempo máximo de espera para conexión
   clientId: `Raspi.local_mqtt_client_${Math.random().toString(16).slice(2, 10)}`, // Evitar conflictos de cliente
-  clean: false // El cliente recordará suscripciones previas, QoS 1 y 2 se entregan cuando reconecte
+  clean: true // false: el cliente recordará suscripciones previas, QoS 1 y 2 se entregan cuando reconecte
 };
 
 // Configuración del cliente MQTT

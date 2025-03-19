@@ -3,17 +3,56 @@ const { publishMessage } = require('../mqttClient'); // Importa el cliente MQTT
 const router = express.Router();
 const axios = require('axios');
 const authMiddleware = require('../middleware/auth'); // Importa el middleware
-const { io } = require('../index'); // Importamos io para emitir eventos
+//const { io } = require('../index'); // Importamos io para emitir eventos
 
 // Ruta para encender/apagar la bombilla
-router.post('/toggle-bulb', authMiddleware, (req, res) => {
-  const { state } = req.body; // Estado "ON" o "OFF"
-  const topic = 'cmnd/tasmota/salon1/POWER'; // Cambia por el tópico de tu dispositivo Tasmota
-  const message = state.toUpperCase(); // Convertir a mayúsculas para Tasmota
+router.post('/toggle-bulb', authMiddleware, async (req, res) => {
+    const { estado } = req.body; // estado "ON" u "OFF"
+    console.log("valor de bombilla", estado);
+    const topic = 'cmnd/tasmota/salon1/POWER'; // Cambia por el tópico de tu dispositivo Tasmota
+    const message = estado.toUpperCase(); // Convertir a mayúsculas para Tasmota
 
-  publishMessage(topic, message);
+    try 
+    {
+        const response = await axios.post('http://localhost:1880/set-bulb', { estado });
 
-  res.json({ success: true, message: `Bombilla ${state}` });
+        // Verificar si la respuesta de Node-RED contiene `success: true`
+        if (response.data.success) {
+            const io = req.app.get("io");
+
+            if (!io) {
+                console.error("❌ io no está disponible en req.app");
+                return res.status(500).json({ message: "Error interno del servidor" });
+            }
+
+            publishMessage(topic, message);
+
+            const bulbState = estado.toUpperCase() === "ON";
+
+            io.emit("bulb-status", { state: bulbState });
+
+            return res.json({ success: true, message: `Bombilla actualizada a ${bulbState}` });
+        } else {
+            return res.status(400).json({ success: false, message: response.data.error || "Error desconocido en Node-RED" });
+        }
+    }
+    catch (error)
+    {
+        console.error('Error al actualizar el estado de la bombilla:', error);
+        res.status(500).json({ message: 'Error al comunicarse con Node-RED' });
+    }
+});
+
+// Ruta para encender/apagar la bombilla
+router.get('/get-bulb', authMiddleware, async (req, res) => {
+    try {
+        const response = await axios.get('http://localhost:1880/get-bulb');
+        console.log("Estado recogido de Node-RED para la bombilla:", response.data.estado);
+        res.json({ estado: response.data.estado });
+    } catch (error) {
+        console.error('Error al obtener el estado de la bombilla:', error);
+        res.status(500).json({ message: 'Error en el servidor' });
+    }
 });
 
 // Obtener el estado actual de la alarma desde Node-RED

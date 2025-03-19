@@ -4,7 +4,7 @@ const User = require('../models/User');
 const authMiddleware = require('../middleware/auth'); // Importar el middleware de autenticación
 const router = express.Router();
 
-const { io } = require('../index'); // Importa io para usar WebSocket en rutas
+//const { io } = require('../index'); // Importa io para usar WebSocket en rutas
 
 // Registro
 router.post('/register', async (req, res) => {
@@ -27,6 +27,8 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
+  console.log("Intento de inicio de sesion de:", username);
+
   try {
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ message: 'Usuario no encontrado' });
@@ -36,6 +38,8 @@ router.post('/login', async (req, res) => {
 
     //Generar Token JWT
     const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+
+    console.log("Nuevo token generado para:", username);
 
     // Almacenar el token en la base de datos
     user.tokens.push({ token }); // Añadimos el nuevo token al array de tokens
@@ -57,7 +61,7 @@ router.post('/login', async (req, res) => {
     */
 
   //  res.json({ token });
-    res.json({ message: 'Inicio de sesión correcto' });
+    res.json({ message: 'Inicio de sesión correcto', user: user });
   } catch (err) {
     console.error('Error en el login:', err); // Agregamos un log para el error
     res.status(500).json({ message: 'Error en el servidor' });
@@ -72,7 +76,7 @@ router.post('/logout', async (req, res) => {
 
 // 🔹 Ruta protegida (Verifica el token)
 router.get('/protected-route', authMiddleware, (req, res) => {
-  res.json({ message: 'Acceso concedido', user: req.user });
+  res.json({ message: 'Acceso concedido' });
 });
 
 module.exports = router;

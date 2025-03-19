@@ -1,17 +1,17 @@
 <template>
   <!-- Logo -->
   <div class="logo-container">
-    <img src="/images/raspdomotic2.jpg" alt="Logo" class="logo" />
+    <img src="/images/RD.png" alt="Logo" class="logo" />
   </div>
 
   <div>
     <h2>{{ isLogin ? 'Login' : 'Registro' }}</h2>
 
     <form @submit.prevent="handleSubmit">
-      <label for="username">Usuario:</label>
+      <label for="username"><strong>Usuario:</strong></label>
       <input type="text" id="username" v-model="formData.username" required />
 
-      <label for="password">Contraseña:</label>
+      <label for="password"><strong>Contraseña:</strong></label>
       <input type="password" id="password" v-model="formData.password" required />
 
       <button type="submit">
@@ -34,10 +34,16 @@
       </div>
     </div>
   </div>
+
+  <footer class="footer">
+    <p>By: <strong>cramirez</strong> &copy; 2025</p>
+  </footer>
 </template>
 
 <script>
 import api from '../api';
+import { mapActions } from 'pinia';
+import { useAuthStore } from '../store/auth';
 
 export default {
   data() {
@@ -50,6 +56,8 @@ export default {
     };
   },
   methods: {
+    ...mapActions(useAuthStore, ['setUser']), // Importar acción de Pinia
+
     toggleMode() {
       this.isLogin = !this.isLogin;
     },
@@ -60,9 +68,13 @@ export default {
 
       const endpoint = this.isLogin ? '/auth/login' : '/auth/register';
       try {
-        await api.post(endpoint, this.formData);
+        const response = await api.post(endpoint, this.formData);
+
+        console.log("Respuesta del backend de inicio de sesion para:", this.formData.username, response);
 
         if (this.isLogin) {
+          console.log(`Usuario ${response.data.user.username} almacenado en Pinia`);
+          this.setUser(response.data.user.username); // Guardar usuario en Pinia y sessionStorage
           this.status = 'success';
           this.statusMessage = '¡Inicio de sesión correcto!';
           
@@ -189,10 +201,24 @@ button:hover {
 }
 
 .success {
-  color: green;
+  color: green !important;
 }
 
 .error {
-  color: red;
+  color: red !important;
+}
+
+.footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 5px;  /* Espacio entre elementos */
+  padding-bottom: 20px; /* Espacio extra debajo */
+  font-size: 14px;
+  text-align: center;
+}
+
+.footer strong {
+  font-weight: bold;
 }
 </style>
