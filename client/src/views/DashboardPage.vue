@@ -9,37 +9,14 @@
 
     <h1>Dashboard</h1>
 
-    <button @click="toggleAlarma" :class="alarma ? 'btn-on' : 'btn-off'">
-      <i class="pi pi-power-off"></i>
-    </button>
+    <div v-for="(category, index) in devicesWithComponents" :key="index" class="device-category">
+      <h2>{{ category.category }}</h2>
 
-    <p>Estado actual de la alarma: <strong>{{ alarma ? "ACTIVADA" : "DESACTIVADA" }}</strong></p>
-
-    <hr class="separador"> <!-- 🔹 Separador estilizado -->
-
-    <div>
-      <button @click="toggleCamera">
-        {{ viendoCamara ? "Detener Cámara" : "Ver Cámara" }}
-      </button>
-
-      <div v-if="viendoCamara" class="camera-container">
-        <img :src="frameActual" alt="Stream de la cámara">
+      <div v-for="device in category.devices" :key="device.type" class="device-container">
+        <component :is="device.component" v-if="device.component" />
       </div>
-    </div>
 
-    <hr class="separador"> <!-- 🔹 Separador estilizado -->
-
-    <div class="toggle-container">
-      <span class="toggle-label">Salón:</span>
-
-      <!-- Toggle Switch -->
-      <label class="toggle-switch">
-        <input type="checkbox" v-model="bulbState" @change="toggleBulb" />
-        <span class="slider"></span>
-      </label>
-
-    <!-- Texto ON / OFF -->
-      <span class="toggle-label">{{ bulbState ? "ON" : "OFF" }}</span>
+      <hr class="separador"> <!-- 🔹 Separador estilizado -->
     </div>
 
     <!-- ⚠️ Aviso de que la sesión expirará pronto -->
@@ -62,17 +39,17 @@
 import api from '../api';
 import { io } from "socket.io-client";
 import { useAuthStore } from '../store/auth';
+import componentMap from '../components/DeviceMapper';
 
 export default {
   setup() {
     const authStore = useAuthStore();
     return { authStore };
   },
+
   data() {
     return {
-      bulbState: false, // false = apagado, true = encendido
-      alarma: false,
-      message: '',
+      devices: [],  // Lista de dispositivos obtenidos desde Node-RED
       socket: null,
       alarmStatus: false,
       sessionTimeout: null,
@@ -81,30 +58,19 @@ export default {
       inactivityLimit: 5 * 60 * 1000, // 5 minutos de inactividad
       warningTime: 4 * 60 * 1000, // Mostrar aviso 1 min antes
       loading: false,
-      viendoCamara: false,
-      frameActual: "",
       logoutLoading: false, // Controla el overlay de cierre de sesión
       logoutStatus: 'loading', // Puede ser 'loading' o 'success'
       logoutMessage: 'Cerrando sesión...' // Mensaje debajo del spinner
     };
   },
+
   async mounted() {
+    console.log("Componentes mapeados:", componentMap);
+
     console.log("Usuario en Pinia al montar Dashboard:", this.authStore.user);
     this.resetSessionTimer(); // Inicia el temporizador de sesión
 
-    try {
-      const response = await api.get('/devices/get-alarma');
-      this.alarma = response.data.estado;
-    } catch (error) {
-      console.error("❌ Error al obtener el estado de la alarma:", error);
-    }
-
-    try {
-      const response = await api.get('/devices/get-bulb');
-      this.bulbState = response.data.estado;
-    } catch (error) {
-      console.error("❌ Error al obtener el estado de la bombilla:", error);
-    }
+    await this.loadDevices();
 
     this.socket = io(window.location.origin, {
       path: "/socket.io",
@@ -116,20 +82,6 @@ export default {
       console.log("✅ Conectado a WebSocket");
     });
 
-    this.socket.on("alarm-status", (data) => {
-      console.log("Estado de alarma actualizado:", data);
-      this.alarma = data.status;
-    });
-
-    this.socket.on("bulb-status", (data) => {
-      console.log("Estado de bombilla actualizado:", data);
-      this.bulbState = data.state;
-    });
-
-    this.socket.on("camera_frame", (base64Image) => {
-      this.frameActual = `data:image/jpeg;base64,${base64Image}`;
-    });
-
     this.socket.on("disconnect", () => {
       console.log("🔴 Desconectado de WebSocket");
     });
@@ -138,6 +90,7 @@ export default {
     window.addEventListener("keypress", this.resetSessionTimer);
     window.addEventListener("touchstart", this.resetSessionTimer);
   },
+
   beforeUnmount() {
     window.removeEventListener("click", this.resetSessionTimer);
     window.removeEventListener("keypress", this.resetSessionTimer);
@@ -145,50 +98,48 @@ export default {
     clearTimeout(this.sessionTimeout);
     clearTimeout(this.warningTimeout);
   },
+
+  computed: {
+    groupedDevices() {
+      const grouped = {};
+      this.devices.forEach(device => {
+        if (!grouped[device.category]) {
+          grouped[device.category] = { category: device.category, devices: [] };
+        }
+        grouped[device.category].devices.push(device);
+      });
+      
+      return Object.values(grouped);
+    },
+    devicesWithComponents() {
+      return this.groupedDevices.map(category => ({
+        category: category.category,
+        devices: category.devices.map(device => ({
+          ...device,
+          component: componentMap[device.type] || null
+        }))
+      }));
+    }
+  },
   methods: {
-    async toggleAlarma() {
-      const estadoPrevio = this.alarma;
-      this.alarma = !this.alarma;
-      console.log("📤 Enviando evento toggle-alarm:", { status: this.alarma });
-
+    async loadDevices() {
       try {
-        const response = await api.post('/devices/set-alarma', { estado: this.alarma });
-        if (!response.data.success) {
-          throw new Error(response.data.message || "Error desconocido");
+        const response = await api.get('/devices/get-devices');
+        if (response.data.success) {
+          console.log("📥 Dispositivos obtenidos:", response.data);
+          this.devices = response.data.devices || [];  // ✅ Si es undefined, asigna []
+        } else {
+          console.error("⚠️ Respuesta inesperada del backend:", response.data);
+          this.devices = [];
         }
-        this.socket.emit("toggle-alarm", { status: this.alarma });
       } catch (error) {
-        console.error("❌ Error al cambiar la alarma:", error);
-        this.alarma = estadoPrevio;
+        console.error("❌ Error al obtener dispositivos:", error);
       }
     },
 
-    async toggleBulb() {
-      const estadoPrevio = !this.bulbState;
-      const newState = this.bulbState === true ? 'ON' : 'OFF';
-      console.log("cambio de estado de bombilla a:", newState);
-
-      try {
-        const response = await api.post('/devices/toggle-bulb', { estado: newState });
-        if (!response.data.success) {
-          throw new Error(response.data.message || "Error desconocido");
-        }
-        //this.socket.emit("toggle-bulb", { state: this.bulbState });
-      } catch (error) {
-        console.error("❌ Error al cambiar estado de la bombilla", error);
-        this.bulbState = estadoPrevio;
-      }
-      this.loading = false;
-    },
-
-    toggleCamera() {
-      if (this.viendoCamara) {
-        this.socket.emit("close-camera");
-        this.frameActual = "";
-      } else {
-        this.socket.emit("request-camera");
-      }
-      this.viendoCamara = !this.viendoCamara;
+    getComponent(tipo) {
+      console.log("Obteniendo componente del tipo:",tipo);
+      return componentMap[tipo] || null;
     },
 
     async logout() {
@@ -272,118 +223,6 @@ export default {
 .logout-link:hover {
   text-decoration: underline;
   color: #0056b3;
-}
-
-/* Botones generales */
-button {
-  padding: 10px 20px;
-  font-size: 16px;
-  background-color: #007bff;
-  color: white;
-  border: none;
-  border-radius: 5px;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-/* Estado cuando el botón ALARMA está activado */
-.btn-on {
-  background-color: green !important;
-  color: white;
-  box-shadow: 0px 0px 15px rgba(0, 255, 0, 0.6); /* Brillo verde */
-}
-
-/* Estado cuando el botón ALARMA está apagado */
-.btn-off {
-  background-color: red !important;
-  color: white;
-  box-shadow: 0px 0px 15px rgba(255, 0, 0, 0.6); /* Brillo rojo */
-}
-
-/* Efecto de "presionado" cuando se hace clic */
-button:active {
-  transform: scale(0.9); /* Se reduce ligeramente */
-  box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); /* Reduce sombra al presionar */
-}
-
-/* Animación de encendido y apagado */
-@keyframes pulsar {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-}
-
-/* Aplica la animación cuando está activado */
-.btn-on {
-  animation: pulsar 0.5s infinite alternate;
-}
-
-/* Contenedor del interruptor de encendido/apagado */
-.toggle-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
-}
-
-/* Estilos del switch */
-.toggle-switch {
-  position: relative;
-  display: inline-block;
-  width: 50px;
-  height: 24px;
-}
-
-.toggle-switch input {
-  opacity: 0;
-  width: 0;
-  height: 0;
-}
-
-.slider {
-  position: absolute;
-  cursor: pointer;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: #ccc;
-  transition: 0.4s;
-  border-radius: 24px;
-}
-
-.slider:before {
-  position: absolute;
-  content: "";
-  height: 18px;
-  width: 18px;
-  left: 3px;
-  bottom: 3px;
-  background-color: white;
-  transition: 0.4s;
-  border-radius: 50%;
-}
-
-input:checked + .slider {
-  background-color: #007bff;
-}
-
-input:checked + .slider:before {
-  transform: translateX(26px);
-}
-
-/* 🔹 Estilo de la etiqueta (ON / OFF) */
-.toggle-label {
-  margin-left: 10px;
-  font-weight: bold;
-  font-size: 16px;
-}
-
-.toggle-label:first-child {
-  font-weight: bold;
 }
 
 /* Aviso de sesión expirada */

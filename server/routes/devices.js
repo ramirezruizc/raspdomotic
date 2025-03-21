@@ -5,6 +5,17 @@ const axios = require('axios');
 const authMiddleware = require('../middleware/auth'); // Importa el middleware
 //const { io } = require('../index'); // Importamos io para emitir eventos
 
+// Ruta para obtener los dispositivos del sistema
+router.get('/get-devices', authMiddleware, async (req, res) => {
+    try {
+        const response = await axios.get('http://localhost:1880/config/devices');
+        res.json({ success: response.data.success, devices: response.data.devices });
+    } catch (error) {
+        console.error('Error al obtener el estado de la bombilla:', error);
+        res.status(500).json({ message: 'Error en el servidor' });
+    }
+});
+
 // Ruta para encender/apagar la bombilla
 router.post('/toggle-bulb', authMiddleware, async (req, res) => {
     const { estado } = req.body; // estado "ON" u "OFF"
@@ -43,7 +54,7 @@ router.post('/toggle-bulb', authMiddleware, async (req, res) => {
     }
 });
 
-// Ruta para encender/apagar la bombilla
+// Ruta para obtener el estado de la bombilla
 router.get('/get-bulb', authMiddleware, async (req, res) => {
     try {
         const response = await axios.get('http://localhost:1880/get-bulb');

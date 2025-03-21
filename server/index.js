@@ -60,20 +60,6 @@ const io = new Server(server, {
 
 app.set("io", io);
 
-/*
-// Configurar sesiones en Express
-app.use(session({
-  secret: process.env.JWT_SECRET, // Clave para firmar la sesión
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    httpOnly: true,   // Evita acceso desde JS
-    secure: false,    // Cambiar a true en producción con HTTPS
-    maxAge: 5 * 60 * 1000, // 5 minutos
-  }
-}));
-*/
-
 // Middleware para autenticar WebSockets
 io.use((socket, next) => {
   const token = socket.handshake.headers.cookie
@@ -165,7 +151,7 @@ wss.on("connection", (ws, request) => {
   ws.on("message", (message) => {
     try {
       // Verifica el mensaje recibido como buffer antes de convertirlo
-      //console.log("🔧 Mensaje recibido en formato Buffer:", message);
+      console.log("🔧 Mensaje recibido en formato Buffer:", message);
 
       // Convertimos el Buffer a texto para analizarlo
       const textMessage = message.toString().trim();
@@ -245,14 +231,6 @@ wss.on("connection", (ws, request) => {
 app.get('/', (req, res) => {
   res.send('Servidor funcionando correctamente');
 });
-
-
-/*
-mongoose
-    .connect(process.env.DB_URI)
-    .then(db => console.log('DB is connected'))
-    .catch(err => console.error(err));
-*/
 
 const connectWithRetry = () => {
   console.log("🔄 Intentando conectar con MongoDB...");
