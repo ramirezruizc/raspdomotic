@@ -1,5 +1,5 @@
 <template>
     <div>
-        <p>Componente SwitchDevice</p>
+        <p>Componente Configuration</p>
     </div>
 </template>

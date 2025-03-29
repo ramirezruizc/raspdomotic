@@ -1,5 +1,5 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import AuthForm from '../components/AuthForm.vue'; // Importa tu formulario de autenticación
+import AuthForm from '../views/AuthForm.vue'; // Importa tu formulario de autenticación
 import Dashboard from '../views/DashboardPage.vue'; // Asume que tienes un Dashboard
 import api from '../api'; // Para las peticiones al servidor
 

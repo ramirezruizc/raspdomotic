@@ -58,18 +58,24 @@ export default {
 
 <style scoped>
 .toggle-container {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 18px;
+  min-width: auto; /* 🔹 Evita forzar un ancho mínimo */
+  max-width: 100%; /* 🔹 Se adapta sin desbordarse */
+  flex-grow: 1; 
 }
 
-/* Estilos del switch */
+.toggle-label {
+  flex-shrink: 0; /* 🔹 Evita que se achique el texto */
+}
+
+/* 🔹 Estilos del switch */
 .toggle-switch {
   position: relative;
-  display: inline-block;
+  display: flex;
+  justify-content: center;
+  align-items: center;
   width: 50px;
   height: 24px;
+  min-width: 40px; /* 🔹 Evita que el switch sea demasiado pequeño */
 }
 
 .toggle-switch input {
@@ -108,16 +114,5 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(26px);
-}
-
-/* 🔹 Estilo de la etiqueta (ON / OFF) */
-.toggle-label {
-  margin-left: 10px;
-  font-weight: bold;
-  font-size: 16px;
-}
-
-.toggle-label:first-child {
-  font-weight: bold;
 }
 </style>

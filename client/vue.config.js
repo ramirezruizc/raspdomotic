@@ -6,6 +6,27 @@ module.exports = defineConfig({
     allowedHosts: 'all',
     host: '0.0.0.0',
     port: 8081,
+    client: {
+      webSocketURL: {
+        hostname: "192.168.1.4", // IP del servidor
+        pathname: "/hmr",         // Cambia la ruta WebSocket de WDS a /hmr
+        port: 8081
+      }
+    },
+    proxy: {
+      '/api': {
+        target: 'http://192.168.1.4:7000', // IP del backend en la Raspberry Pi
+        changeOrigin: true
+      },
+      '/socket.io': {
+        target: 'http://192.168.1.4:7000',
+        ws: true
+      },
+      '/ws': {
+        target: 'http://192.168.1.4:7000/ws/',
+        ws: true
+      }
+    }
   },
   pwa: {
     name: 'RaspDomotic', // Aquí cambia el título

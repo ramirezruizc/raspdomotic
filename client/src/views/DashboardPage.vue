@@ -1,22 +1,44 @@
 <template>
   <div class="dashboard">
+    <div>
+      <burguerMenu />
+    </div>
+
     <div class="logout">
       <span v-if="authStore.user" class="user-name">
         ¡Hola! <strong>{{ authStore.user }}</strong>
       </span>
       <a href="#" @click.prevent="logout" class="logout-link">Cerrar sesión</a>
     </div>
-
     <h1>Dashboard</h1>
 
-    <div v-for="(category, index) in devicesWithComponents" :key="index" class="device-category">
-      <h2>{{ category.category }}</h2>
+    <!-- Contenedor de categorías draggable -->
+    <div class="categories-container">
+      <draggable v-model="groupedDevices" item-key="category" group="categories" @end="saveOrder" 
+      handle=".drag-handle" class="category-grid">
+        <template #item="{ element: category }">
+          <div class="device-category-container">
+            <h2>
+              <span class="drag-handle"><i class="pi pi-ellipsis-v"></i></span> 
+              {{ category.category }}
+            </h2>
 
-      <div v-for="device in category.devices" :key="device.type" class="device-container">
-        <component :is="device.component" v-if="device.component" />
-      </div>
-
-      <hr class="separador"> <!-- 🔹 Separador estilizado -->
+            <!-- Contenedor de dispositivos draggable -->
+            <draggable v-model="category.devices" item-key="id" group="devices" @end="saveOrder"
+            handle=".drag-handle" class="device-grid" :forceFallback="true" :fallbackOnBody="true"
+            :move="checkMove">
+              <template #item="{ element: device }">
+                <div class="device-container">
+                  <span class="drag-handle"><i class="pi pi-ellipsis-v"></i></span> 
+                  <div class="device-content">
+                    <component :is="getComponent(device.type)" v-if="getComponent(device.type)" :key="device.id" />
+                  </div>
+                </div>  
+              </template>
+            </draggable>
+          </div>
+        </template>
+      </draggable>
     </div>
 
     <!-- ⚠️ Aviso de que la sesión expirará pronto -->
@@ -40,8 +62,15 @@ import api from '../api';
 import { io } from "socket.io-client";
 import { useAuthStore } from '../store/auth';
 import componentMap from '../components/DeviceMapper';
+import draggable from 'vuedraggable';
+import burguerMenu from "../components/BurguerMenu.vue";
 
 export default {
+  components: { 
+    draggable,
+    burguerMenu
+  },
+
   setup() {
     const authStore = useAuthStore();
     return { authStore };
@@ -50,6 +79,7 @@ export default {
   data() {
     return {
       devices: [],  // Lista de dispositivos obtenidos desde Node-RED
+      groupedDevices: [],
       socket: null,
       alarmStatus: false,
       sessionTimeout: null,
@@ -99,28 +129,6 @@ export default {
     clearTimeout(this.warningTimeout);
   },
 
-  computed: {
-    groupedDevices() {
-      const grouped = {};
-      this.devices.forEach(device => {
-        if (!grouped[device.category]) {
-          grouped[device.category] = { category: device.category, devices: [] };
-        }
-        grouped[device.category].devices.push(device);
-      });
-      
-      return Object.values(grouped);
-    },
-    devicesWithComponents() {
-      return this.groupedDevices.map(category => ({
-        category: category.category,
-        devices: category.devices.map(device => ({
-          ...device,
-          component: componentMap[device.type] || null
-        }))
-      }));
-    }
-  },
   methods: {
     async loadDevices() {
       try {
@@ -128,6 +136,17 @@ export default {
         if (response.data.success) {
           console.log("📥 Dispositivos obtenidos:", response.data);
           this.devices = response.data.devices || [];  // ✅ Si es undefined, asigna []
+          
+          // Agrupar los dispositivos en categorías manualmente
+          const grouped = {};
+          this.devices.forEach(device => {
+            if (!grouped[device.category]) {
+              grouped[device.category] = { category: device.category, devices: [] };
+            }
+            grouped[device.category].devices.push(device);
+          });
+
+          this.groupedDevices = Object.values(grouped);  // ✅ Se mantiene reactivo
         } else {
           console.error("⚠️ Respuesta inesperada del backend:", response.data);
           this.devices = [];
@@ -140,6 +159,11 @@ export default {
     getComponent(tipo) {
       console.log("Obteniendo componente del tipo:",tipo);
       return componentMap[tipo] || null;
+    },
+
+    checkMove(event) {
+      // Evita mover entre categorías diferentes
+      return event.to === event.from;
     },
 
     async logout() {
@@ -178,141 +202,5 @@ export default {
 };
 </script>
 
-<style scoped>
-/* Estilos generales */
-.dashboard {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 20px;
-  margin-top: 50px;
-}
-
-.separador {
-  width: 80%; /* En lugar de 100%, ocupa solo el 80% del contenido */
-  max-width: 600px; /* Limita el ancho máximo */
-  height: 2px;
-  background: linear-gradient(to right, #ccc, #666, #ccc);
-  margin: 20px auto; /* Centra horizontalmente */
-  display: block;
-}
-
-/* 🔹 Ajustes para la esquina superior derecha */
-.logout {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  text-align: right;
-}
-
-.user-name {
-  font-size: 14px;
-  font-weight: bold;
-  display: block;
-}
-
-.logout-link {
-  text-decoration: none;
-  color: #007bff;
-  font-size: 14px;
-  font-weight: bold;
-  cursor: pointer;
-  display: block;
-}
-
-.logout-link:hover {
-  text-decoration: underline;
-  color: #0056b3;
-}
-
-/* Aviso de sesión expirada */
-.session-warning {
-  position: fixed;
-  bottom: 10px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: red;
-  color: white;
-  padding: 10px 15px;
-  border-radius: 5px;
-  font-size: 14px;
-  font-weight: bold;
-}
-
-/* Contenedor del stream de la cámara */
-.camera-container {
-  width: 90vw;  /* Se adapta al ancho del dispositivo */
-  max-width: 600px;  /* No más grande que 600px en escritorio */
-  margin: 20px auto 0; /* Centrado y separado del botón */
-  padding: 10px;
-  background: black; /* Fondo oscuro para mejor contraste */
-  border: 3px solid #007bff;
-  border-radius: 10px;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  aspect-ratio: 1 / 1; /* Cuadro perfectamente cuadrado */
-}
-
-/* Ajuste del stream */
-.camera-container img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain; /* Evita distorsión */
-  border-radius: 5px;
-}
-
-/* Evita el autozoom en móviles */
-input {
-  font-size: 16px; /* Evita que los navegadores móviles hagan zoom en inputs */
-}
-/* ✅ Overlay de cierre de sesión */
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: white;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-  text-align: center;
-}
-
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 5px solid rgba(0, 0, 0, 0.1);
-  border-top-color: #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-.status-icon {
-  font-size: 50px;
-  margin-bottom: 10px;
-}
-
-.success {
-  color: green !important;
-}
-</style>
+/* Importa los estilos de DashboardPage */
+<style src="@/assets/css/DashboardPage.css" scoped></style> 

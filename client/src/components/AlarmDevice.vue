@@ -3,7 +3,7 @@
 		<button @click="toggleAlarma" :class="alarma ? 'btn-on' : 'btn-off'">
 			<i class="pi pi-power-off"></i>
 		</button>
-		<p>Estado actual de la alarma: <strong>{{ alarma ? "ACTIVADA" : "DESACTIVADA" }}</strong></p>
+		<p>Alarma: <strong>{{ alarma ? "ACTIVADA" : "DESACTIVADA" }}</strong></p>
 	</div>
 </template>
 
@@ -54,6 +54,14 @@ export default {
 </script>
 
 <style scoped>
+p {
+  margin-top: 10px;
+  font-size: 14px;
+  overflow-wrap: break-word; /* Asegura que el texto largo se rompa */
+  word-wrap: break-word;
+  white-space: normal; /* Permite que el texto fluya y no se corte */
+}
+
 button {
   padding: 10px 20px;
   font-size: 16px;
@@ -62,6 +70,7 @@ button {
   border: none;
   border-radius: 5px;
   cursor: pointer;
+  max-width: 100%; /* Evita que el botón se expanda más allá de su contenedor */
 }
 
 button:hover {
@@ -87,15 +96,15 @@ button:active {
   box-shadow: 0px 2px 5px rgba(0, 0, 0, 0.2); /* Reduce sombra al presionar */
 }
 
+/* Aplica la animación cuando está activado */
+.btn-on {
+  animation: pulsar 0.5s infinite alternate;
+}
+
 /* Animación de encendido y apagado */
 @keyframes pulsar {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
-}
-
-/* Aplica la animación cuando está activado */
-.btn-on {
-  animation: pulsar 0.5s infinite alternate;
 }
 </style>

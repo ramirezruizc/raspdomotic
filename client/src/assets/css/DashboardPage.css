@@ -1,0 +1,211 @@
+/* Estilos generales */
+.dashboard {
+    /*display: flex;*/
+    flex-direction: column;
+    align-items: center;
+    gap: 10px;
+    /*margin-top: 25px;*/
+  }
+  
+  /* 🔹 Ajustes para la esquina superior derecha */
+  .logout {
+    position: fixed;
+    top: 10px;
+    right: 10px;
+    text-align: right;
+  }
+  
+  .user-name {
+    font-size: 14px;
+    font-weight: bold;
+    display: block;
+  }
+  
+  .logout-link {
+    text-decoration: none;
+    color: #007bff;
+    font-size: 14px;
+    font-weight: bold;
+    cursor: pointer;
+    display: block;
+  }
+  
+  .logout-link:hover {
+    text-decoration: underline;
+    color: #0056b3;
+  }
+  
+  /* Aviso de sesión expirada */
+  .session-warning {
+    position: fixed;
+    bottom: 10px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: red;
+    color: white;
+    padding: 10px 15px;
+    border-radius: 5px;
+    font-size: 14px;
+    font-weight: bold;
+  }
+  
+  /* Evita el autozoom en móviles */
+  input {
+    font-size: 16px; /* Evita que los navegadores móviles hagan zoom en inputs */
+  }
+  /* ✅ Overlay de cierre de sesión */
+  .overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.6);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 1000;
+  }
+  
+  .loading-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    background: white;
+    padding: 20px;
+    border-radius: 15px;
+    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+    text-align: center;
+  }
+  
+  .spinner {
+    width: 50px;
+    height: 50px;
+    border: 5px solid rgba(0, 0, 0, 0.1);
+    border-top-color: #007bff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+    margin-bottom: 10px;
+  }
+  
+  @keyframes spin {
+    to {
+      transform: rotate(360deg);
+    }
+  }
+  
+  .status-icon {
+    font-size: 50px;
+    margin-bottom: 10px;
+  }
+  
+  .success {
+    color: green !important;
+  }
+  
+  h2 {
+    /*display: flex;*/
+    /*align-items: center;*/
+    margin-top: 0;
+    gap: 8px; /* Espacio entre icono y texto */
+  }
+  
+  .category-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Se adapta automáticamente */
+    gap: 10px;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+  }
+
+  /* 🔹 Contenedor con scroll para categorías y dispositivos */
+  .categories-container {
+    flex: 1;
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    max-height: calc(100vh - 60px); /* Reserva espacio superior */
+    overflow-y: auto; /* Activa el desplazamiento vertical */
+  }
+  
+  /* Contenedor de cada categoría */
+  .device-category-container {
+    background: #f2f2f2;
+    padding: 15px;
+    border-radius: 10px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    margin: 0;
+    width: 100%; /* 🔹 Asegura que cada categoría ocupe el 100% del espacio disponible */
+    box-sizing: border-box; /* Asegura que el padding no aumente el tamaño del contenedor */
+  }
+  
+  /* Grid de dispositivos dentro de cada categoría (solo una columna) */
+  .device-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* 🔹 Dispositivos más compactos */
+    gap: 8px;
+    width: 100%;
+    max-height: calc(100vh - 200px); /* Ajusta según la pantalla disponible */
+    overflow-y: auto; /* Activa el scroll si hay demasiados dispositivos */
+  }
+  
+  /* Contenedor de cada dispositivo */
+  .device-container {
+    display: flex;
+    align-items: center;
+    background: #e0e0e0;
+    padding: 10px;
+    border-radius: 10px;
+    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+    border: 1px solid #ddd;
+    width: 100%; /* 🔹 Asegura que el dispositivo ocupe todo el ancho del contenedor */
+    max-width: 100%; /* 🔹 Limita el ancho máximo al 100% */
+    margin: 0; /* 🔹 Elimina márgenes */
+    box-sizing: border-box; /* 🔹 Incluye el padding en el cálculo del tamaño */
+  }
+  
+  /* Contenido del dispositivo */
+  .device-content {
+    flex: 1; /* 🔹 Se ajusta automáticamente al ancho del contenedor */
+    min-width: 0; /* 🔹 Previene expansión innecesaria */
+    /*overflow: hidden;  🔹 Evita que el contenido sobresalga */
+    text-overflow: ellipsis; /* 🔹 Si hay texto largo, se corta con "..." */
+    white-space: nowrap; /* 🔹 Evita el corte del texto en varias líneas */
+  }
+  
+  .drag-handle {
+    cursor: grab;
+    font-size: 20px;
+    color: #333;
+    margin-right: 5px; /* 🔹 Espaciado con el contenido */
+    flex-shrink: 0; /* 🔹 Evita que el ícono se comprima */
+  }
+  
+  .flip-list-move {
+    transition: transform 0.5s;
+  }
+  
+  .flip-list-enter-active,
+  .flip-list-leave-active {
+    transition: all 0.5s ease;
+  }
+  
+  .flip-list-enter, .flip-list-leave-to {
+    opacity: 0;
+    transform: scale(0.9);
+  }
+  
+/* 🔹 Ajuste en móviles de hasta 430px */
+@media (max-width: 430px) { 
+  .category-grid {
+    grid-template-columns: repeat(auto-fit minmax(140px, 1fr)); /* 🔹 Dos columnas más compactas */
+  }
+}
+
+/* 🔹 Ajuste en móviles más estrechos */
+@media (max-width: 360px) {
+  .category-grid {
+    grid-template-columns: 1fr; /* 🔹 Se convierte en una sola columna */
+  }
+}

@@ -36,7 +36,9 @@
   </div>
 
   <footer class="footer">
-    <p>By: <strong>cramirez</strong> &copy; 2025</p>
+    <p>By: <strong>cramirez</strong> &copy; 2025
+      <img src="/images/LogoUNED.png" alt="Logo" class="footer-logo" />
+    </p>
   </footer>
 </template>
 
@@ -103,122 +105,5 @@ export default {
 };
 </script>
 
-<style scoped>
-/* Formulario */
-form {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-width: 320px;
-  width: 100%;
-  margin: 0 auto;
-  padding: 20px;
-  box-sizing: border-box;
-}
-
-input,
-button {
-  width: 100%;
-  padding: 10px;
-  font-size: 16px;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-sizing: border-box;
-}
-
-button {
-  background-color: #007bff;
-  color: white;
-  border: none;
-  cursor: pointer;
-}
-
-button:hover {
-  background-color: #0056b3;
-}
-
-/* Contenedor del logo */
-.logo-container {
-  display: flex;
-  justify-content: center;
-  margin-bottom: 20px;
-}
-
-/* Estilo del logo */
-.logo {
-  max-width: 100%;
-  height: auto;
-  max-height: 150px;
-}
-
-/* 🔹 PANTALLA DE CARGA SUPERPUESTA */
-.overlay {
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.6);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-}
-
-/* 🔹 Contenedor del spinner e íconos */
-.loading-container {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  background: white;
-  padding: 20px;
-  border-radius: 15px;
-  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-  text-align: center;
-}
-
-/* 🔹 Spinner animado */
-.spinner {
-  width: 50px;
-  height: 50px;
-  border: 5px solid rgba(0, 0, 0, 0.1);
-  border-top-color: #007bff;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  margin-bottom: 10px;
-}
-
-@keyframes spin {
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* 🔹 Iconos de estado */
-.status-icon {
-  font-size: 50px;
-  margin-bottom: 10px;
-}
-
-.success {
-  color: green !important;
-}
-
-.error {
-  color: red !important;
-}
-
-.footer {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 5px;  /* Espacio entre elementos */
-  padding-bottom: 20px; /* Espacio extra debajo */
-  font-size: 14px;
-  text-align: center;
-}
-
-.footer strong {
-  font-weight: bold;
-}
-</style>
+//Importa los estilos de AuthForm
+<style src="@/assets/css/AuthForm.css" scoped></style>
