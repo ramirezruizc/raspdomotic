@@ -1,12 +1,23 @@
 import { createRouter, createWebHistory } from 'vue-router';
-import AuthForm from '../views/AuthForm.vue'; // Importa tu formulario de autenticación
-import Dashboard from '../views/DashboardPage.vue'; // Asume que tienes un Dashboard
+import AuthForm from '../views/AuthFormView.vue'; // Importa tu formulario de autenticación
+import Main from '../views/MainView.vue'; // Main view
+import Dashboard from '../views/DashboardView.vue'; // Main view
+import Analytics from '../views/AnalyticsView.vue'; // Main view
+import Configuration from '../views/ConfigurationView.vue'; // Main view
 import api from '../api'; // Para las peticiones al servidor
 
 const routes = [
   { path: '/', component: AuthForm }, // Ruta de inicio: Muestra el formulario de login/registro
   { path: '/login', component: AuthForm }, // Ruta de login
-  { path: '/dashboard', component: Dashboard, meta: { requiresAuth: true } }, // Ruta del dashboard (protegida)
+  { path: '/app',
+    component: Main,
+    children: [
+        { path: '', component: Dashboard }, // Página por defecto Dashboard
+        { path: 'analytics', component: Analytics }, // Página de analytics
+        { path: 'configuration', component: Configuration }, //Página de configuration
+    ],
+    meta: { requiresAuth: true }
+  }
 ];
 
 const router = createRouter({

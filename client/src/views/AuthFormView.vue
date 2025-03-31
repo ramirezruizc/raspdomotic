@@ -81,7 +81,7 @@ export default {
           this.statusMessage = '¡Inicio de sesión correcto!';
           
           setTimeout(() => {
-            this.$router.push('/dashboard'); // Redirige después de 1 seg
+            this.$router.push('/app'); // Redirige después de 1 seg
           }, 1000);
         } else {
           this.status = 'success';
@@ -105,5 +105,5 @@ export default {
 };
 </script>
 
-//Importa los estilos de AuthForm
-<style src="@/assets/css/AuthForm.css" scoped></style>
+//Importa los estilos de AuthFormView
+<style src="@/assets/css/AuthFormView.css" scoped></style>

@@ -26,9 +26,9 @@ export default {
     return {
       mostrarMenu: false,
       opciones: [
-        { nombre: "Dashboard", ruta: "/dashboard" },
-        { nombre: "Analytics", ruta: "/analytics" },
-        { nombre: "Configuration", ruta: "/configuration" },
+        { nombre: "Dashboard", ruta: "/app" },
+        { nombre: "Analytics", ruta: "/app/analytics" },
+        { nombre: "Configuration", ruta: "/app/configuration" },
       ],
     };
   },
@@ -42,7 +42,10 @@ export default {
     seleccionarOpcion(item) {
       console.log(`Navegando a: ${item.ruta}`);
       this.mostrarMenu = false;
-      // Aquí puedes usar Vue Router si es necesario: this.$router.push(item.ruta);
+
+      // usamos Vue Router: this.$router.push(item.ruta);
+      this.$router.push(item.ruta);
+      this.mostrarMenu = false;
     },
   },
 };

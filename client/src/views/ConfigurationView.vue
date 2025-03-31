@@ -1,5 +1,5 @@
 <template>
-    <div>
-        <p>Componente Configuration</p>
+    <div class="cofiguration">
+      <h1>Configuration</h1>
     </div>
 </template>
