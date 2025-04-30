@@ -13,6 +13,7 @@ module.exports = defineConfig({
         port: 8081
       }
     },
+    /*
     proxy: {
       '/api': {
         target: 'http://192.168.1.4:7000', // IP del backend en la Raspberry Pi
@@ -27,6 +28,7 @@ module.exports = defineConfig({
         ws: true
       }
     }
+    */
   },
   pwa: {
     name: 'RaspDomotic', // Aquí cambia el título
@@ -56,5 +58,9 @@ module.exports = defineConfig({
       args[0].title = 'RaspDomotic';
       return args;
     });
-  }
+  },
+  // Habilita los source maps en el entorno de desarrollo
+  configureWebpack: {
+    devtool: 'source-map',
+  },
 })

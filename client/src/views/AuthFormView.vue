@@ -4,8 +4,20 @@
     <img src="/images/RD.png" alt="Logo" class="logo" />
   </div>
 
-  <div>
+  <div class="AuthForm" v-if="isLoaded">
+    <!-- Vista principal -->
     <h2>{{ isLogin ? 'Login' : 'Registro' }}</h2>
+
+    <!-- Muestra alerta si hay modo mantenimiento activo y no estamos en registro -->
+    <p v-if="maintenanceMode && isLogin" class="info-message">
+      ⚠️ Modo mantenimiento activado. Solo usuarios administradores pueden iniciar sesión.
+    </p>
+
+    <!-- Mensaje para primer usuario -->
+    <p v-if="initialSetup" class="info-message">
+      🛠️ No se ha detectado ningún usuario en el sistema. 
+      Registra el primer usuario administrador para continuar.
+    </p>
 
     <form @submit.prevent="handleSubmit">
       <label for="username"><strong>Usuario:</strong></label>
@@ -15,26 +27,34 @@
       <input type="password" id="password" v-model="formData.password" required />
 
       <button type="submit">
-        {{ isLogin ? 'Iniciar Sesión' : 'Registrar' }}
+        {{ initialSetup ? 'Registrar administrador' : (isLogin ? 'Iniciar Sesión' : 'Registrar') }}
       </button>
     </form>
 
-    <p @click="toggleMode">
+    <!-- Mostrar mensaje si el registro está deshabilitado (pero solo si no hay mantenimiento) -->
+    <p v-if="!initialSetup && !allowRegistration && !maintenanceMode" class="info-message">
+      🛑 El registro de nuevos usuarios está deshabilitado.
+      Contacta al administrador si necesitas acceso.
+    </p>
+
+    <!-- Alternar entre login y registro (si está permitido y no hay mantenimiento) -->
+    <p v-if="!initialSetup && allowRegistration && !maintenanceMode" @click="toggleMode">
       {{ isLogin ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? ' }}
       <strong>{{ isLogin ? 'Regístrate aquí' : 'Inicia sesión aquí' }}</strong>
     </p>
+  </div>
 
-    <!-- Pantalla de carga mejorada -->
-    <div v-if="loading" class="overlay">
-      <div class="loading-container">
-        <div v-if="status === 'loading'" class="spinner"></div>
-        <div v-if="status === 'success'" class="status-icon success">✔️</div>
-        <div v-if="status === 'error'" class="status-icon error">❌</div>
+  <!-- Pantalla de carga -->
+  <div v-if="loading" class="overlay">
+    <div class="loading-container">
+      <div v-if="status === 'loading'" class="spinner"></div>
+      <div v-if="status === 'success'" class="status-icon success">✓</div>
+      <div v-if="status === 'error'" class="status-icon error">❌</div>
         <p>{{ statusMessage }}</p>
-      </div>
     </div>
   </div>
 
+  <!-- Footer -->
   <footer class="footer">
     <p>By: <strong>cramirez</strong> &copy; 2025
       <img src="/images/LogoUNED.png" alt="Logo" class="footer-logo" />
@@ -43,67 +63,104 @@
 </template>
 
 <script>
-import api from '../api';
 import { mapActions } from 'pinia';
-import { useAuthStore } from '../store/auth';
+import { useAuthStore } from '../store/mainStore';
+import { login, register } from '@/api/auth';
+import { getSystemConfig } from '@/api/systemConfig';
 
 export default {
   data() {
     return {
       isLogin: true,
-      formData: { username: '', password: '' },
-      loading: false, // Controla la pantalla de carga
-      status: 'loading', // Puede ser 'loading', 'success' o 'error'
-      statusMessage: 'Validando...', // Mensaje debajo del spinner
+      formData: {
+        username: '',
+        password: ''
+      },
+      loading: false,
+      status: 'loading',
+      isLoaded: false,
+      statusMessage: 'Validando...',
+      allowRegistration: false,
+      maintenanceMode: false,
+      initialSetup: false
     };
   },
   methods: {
-    ...mapActions(useAuthStore, ['setUser']), // Importar acción de Pinia
+    ...mapActions(useAuthStore, ['setUser']),
 
     toggleMode() {
+      if (this.initialSetup) return;
       this.isLogin = !this.isLogin;
     },
+
     async handleSubmit() {
       this.loading = true;
       this.status = 'loading';
       this.statusMessage = 'Validando...';
 
-      const endpoint = this.isLogin ? '/auth/login' : '/auth/register';
       try {
-        const response = await api.post(endpoint, this.formData);
-
-        console.log("Respuesta del backend de inicio de sesion para:", this.formData.username, response);
+        const response = this.isLogin
+          ? await login(this.formData)
+          : await register(this.formData);
 
         if (this.isLogin) {
-          console.log(`Usuario ${response.data.user.username} almacenado en Pinia`);
-          this.setUser(response.data.user.username); // Guardar usuario en Pinia y sessionStorage
+          this.setUser(response.user);
           this.status = 'success';
           this.statusMessage = '¡Inicio de sesión correcto!';
-          
-          setTimeout(() => {
-            this.$router.push('/app'); // Redirige después de 1 seg
-          }, 1000);
+          this.formData.username = '';
+          this.formData.password = '';
+          setTimeout(() => this.$router.push('/app'), 1000);
         } else {
           this.status = 'success';
-          this.statusMessage = 'Registro con éxito. ¡Inicia sesión!';
-
+          this.statusMessage = 'Registro correcto. ¡Inicia sesión!';
           setTimeout(() => {
             this.loading = false;
-            this.isLogin = true; // Cambia a la vista de Login
+            this.isLogin = true;
+            this.initialSetup = false;
+            this.formData.username = '';
+            this.formData.password = '';
           }, 2000);
         }
       } catch (error) {
         this.status = 'error';
         this.statusMessage = error.response?.data?.message || 'Ocurrió un error';
-        
         setTimeout(() => {
           this.loading = false;
-        }, 3000); // Oculta el error después de 3 seg
+        }, 3000);
+      }
+    },
+
+    async checkSystemConfig() {
+      try {
+        this.loading = true;
+        this.status = 'loading';
+        this.statusMessage = 'Validando...';
+
+        const config = await getSystemConfig();
+
+        console.log("Configuración del sistema:", config);
+
+        this.allowRegistration = config.allowRegistration;
+        this.maintenanceMode = config.maintenanceMode;
+
+        if (!config.usersExist) {
+          this.isLogin = false;
+          this.initialSetup = true;
+        }
+
+        this.loading = false;
+      } catch (error) {
+        console.error('Error al cargar configuración del sistema', error);
       }
     },
   },
+
+  async mounted() {
+    this.isLoaded = false;
+    await this.checkSystemConfig();
+    this.isLoaded = true;
+  }
 };
 </script>
 
-//Importa los estilos de AuthFormView
 <style src="@/assets/css/AuthFormView.css" scoped></style>

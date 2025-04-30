@@ -4,7 +4,16 @@ const bcrypt = require('bcrypt');
 const UserSchema = new mongoose.Schema({
   username: { type: String, required: true, unique: true },
   password: { type: String, required: true },
-  tokens: [{ token: String }], // Almacena los tokens emitidos
+  role: {
+    type: [String],
+    enum: ['s-user', 'user', 'admin'],
+    default: ['user'],
+  },
+  tokens: { token: String }, // Almacena el token emitido
+  layout: { // Almacena el esquema del Home Control del usuario
+    type: Array, 
+    default: [] 
+  }
 });
 
 // Middleware para cifrar contraseñas
@@ -20,4 +29,3 @@ UserSchema.methods.comparePassword = function (candidatePassword) {
 };
 
 module.exports = mongoose.model('User', UserSchema);
- 

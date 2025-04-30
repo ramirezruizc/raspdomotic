@@ -1,0 +1,122 @@
+/* Estilos generales */
+.home-control {
+  /*display: flex;*/
+  flex-direction: column;
+  align-items: center;
+  /*gap: 10px;*/
+  /*padding: 0 6rem;*/
+  /*padding-left: 1rem;*/
+  /*padding-right: 4rem;*/
+  /*margin-top: 25px;*/
+}
+
+/* Evita el autozoom en dispositivis móviles */
+input {
+  font-size: 16px; /* Evita que los navegadores móviles hagan zoom en inputs */
+}
+
+h1 {
+  /*display: flex;*/
+  /*align-items: center;*/
+  margin-top: 40px;
+  margin-bottom: 0;
+  gap: 8px; /* Espacio entre icono y texto */
+}
+
+h2 {
+  /*display: flex;*/
+  /*align-items: center;*/
+  margin-top: 0;
+  gap: 8px; /* Espacio entre icono y texto */
+}
+
+.category-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Se adapta automáticamente */
+  gap: 10px;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+}
+
+/* 🔹 Contenedor con scroll para categorías y dispositivos */
+.categories-container {
+  flex: 1;
+  width: 100%;
+  padding: 10px;
+  box-sizing: border-box;
+  max-height: calc(100vh - 60px); /* Reserva espacio superior */
+  overflow-y: auto; /* Activa el desplazamiento vertical */
+
+  /* máscara de desvanecimiento arriba */
+  mask-image: linear-gradient(to bottom, transparent, black 30px, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 30px, black 100%);
+}
+
+/* Contenedor de cada categoría */
+.device-category-container {
+  background: #f2f2f2;
+  padding: 15px;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+  margin: 0;
+  width: 100%; /* 🔹 Asegura que cada categoría ocupe el 100% del espacio disponible */
+  box-sizing: border-box; /* Asegura que el padding no aumente el tamaño del contenedor */
+}
+
+/* Grid de dispositivos dentro de cada categoría */
+.device-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Dispositivos más compactos */
+  gap: 8px;
+  width: 100%;
+  max-height: calc(100vh - 200px); /* Ajusta según la pantalla disponible */
+  overflow-y: auto; /* Activa el scroll si hay demasiados dispositivos */
+}
+
+/* Contenedor de cada dispositivo */
+.device-container {
+  display: flex;
+  align-items: center;
+  background: #e0e0e0;
+  padding: 10px;
+  border-radius: 10px;
+  box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
+  border: 1px solid #ddd;
+  width: 100%; /* Asegura que el dispositivo ocupe todo el ancho del contenedor */
+  max-width: 100%; /* Limita el ancho máximo al 100% */
+  margin: 0; /* Elimina márgenes */
+  box-sizing: border-box; /* Incluye el padding en el cálculo del tamaño */
+}
+
+/* Contenido del dispositivo */
+.device-content {
+  flex: 1; /* Se ajusta automáticamente al ancho del contenedor */
+  min-width: 0; /* Previene expansión innecesaria */
+  /*overflow: hidden;  Evita que el contenido sobresalga */
+  text-overflow: ellipsis; /* Si hay texto largo, se corta con "..." */
+  white-space: nowrap; /* Evita el corte del texto en varias líneas */
+}
+
+.drag-handle {
+  cursor: grab;
+  font-size: 20px;
+  color: #333;
+  margin-right: 5px; /* Espaciado con el contenido */
+  flex-shrink: 0; /* Evita que el ícono se comprima */
+}
+  
+/* Ajuste en móviles de hasta 430px */
+@media (max-width: 430px) { 
+  .category-grid {
+    grid-template-columns: repeat(auto-fit minmax(140px, 1fr)); /* Dos columnas más compactas */
+  }
+}
+
+/* Ajuste en móviles más estrechos */
+@media (max-width: 360px) {
+  .category-grid {
+    grid-template-columns: 1fr; /* Se convierte en una sola columna */
+  }
+}

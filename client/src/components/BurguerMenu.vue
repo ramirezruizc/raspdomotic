@@ -7,9 +7,9 @@
 
     <!-- Menú desplegable con overlay -->
     <div v-if="mostrarMenu">
-      <div class="menu-overlay" @click="cerrarMenu"></div> <!-- 🔹 Overlay para cerrar menú -->
-      <div class="menu-container" @click.stop> <!-- 🔹 Evita cierre al hacer clic dentro -->
-        <h2>Menú</h2>
+      <div class="menu-overlay" @click="cerrarMenu"></div> <!-- Overlay para cerrar menú -->
+      <div class="menu-container" @click.stop> <!-- Evita cierre al hacer clic dentro -->
+        <h2>RaspDomotic</h2>
         <ul>
           <li v-for="(item, index) in opciones" :key="index" @click="seleccionarOpcion(item)">
             {{ item.nombre }}
@@ -26,8 +26,8 @@ export default {
     return {
       mostrarMenu: false,
       opciones: [
-        { nombre: "Dashboard", ruta: "/app" },
-        { nombre: "Analytics", ruta: "/app/analytics" },
+        { nombre: "Home Control", ruta: "/app" },
+        { nombre: "Dashboard", ruta: "/app/dashboard" },
         { nombre: "Configuration", ruta: "/app/configuration" },
       ],
     };
@@ -62,10 +62,10 @@ export default {
   border: none;
   cursor: pointer;
   color: black;
-  z-index: 1100;
+  z-index: 1000;
 }
 
-/* 🔹 Fondo oscuro al abrir el menú */
+/* Fondo oscuro al abrir el menú */
 .menu-overlay {
   position: fixed;
   top: 0;
@@ -76,7 +76,7 @@ export default {
   z-index: 1000;
 }
 
-/* 🔹 Contenedor del menú */
+/* Contenedor del menú */
 .menu-container {
   position: absolute;
   top: 50px; /* Mantiene el menú debajo del icono */

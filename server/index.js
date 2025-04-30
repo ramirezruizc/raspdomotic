@@ -15,6 +15,8 @@ const { publishMessage } = require('./mqttClient'); // Importa el cliente MQTT
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const deviceRoutes = require('./routes/devices');
+const eventRoutes = require('./routes/events');
+const systemConfigRoutes = require('./routes/systemConfig');
 const { log } = require('console');
 
 //const authSocket = require('./middleware/authSocket');
@@ -129,7 +131,7 @@ io.on("connection", (socket) => {
   });
 });
 
-// 🔹 Configurar WebSocket puro (ws)
+// Configurar WebSocket puro (ws)
 const wss = new WebSocket.Server({ noServer: true });
 
 //Peticiones Socket.io con URL '/ws' se redirigen a WS puro
@@ -157,7 +159,7 @@ wss.on("connection", (ws, request) => {
       const textMessage = message.toString().trim();
       //console.log("🔧 Mensaje recibido como texto:", textMessage);
 
-      // 🔄 Si el mensaje es "STATUS", responder directamente
+      // Si el mensaje es "STATUS", responder directamente
       if (textMessage === "STATUS") {
         console.log("🔄 Respondiendo al ESP32-CAM: 'BACKEND WS OK'");
         ws.send("BACKEND WS OK");
@@ -195,7 +197,7 @@ wss.on("connection", (ws, request) => {
             default:
               console.warn("⚠️ Acción desconocida recibida:", data.action);
           }
-          return; // 🔹 Si era JSON, terminamos aquí
+          return; // Si era JSON, terminamos aquí
         } catch (err) {
           console.error("❌ Error procesando JSON:", err);
         }
@@ -263,6 +265,8 @@ mongoose.connection.on("disconnected", () => {
 // Rutas
 app.use('/api/auth', authRoutes);
 app.use('/api/devices', deviceRoutes);
+app.use('/api/events', eventRoutes);
+app.use('/api/systemConfig', systemConfigRoutes);
 
 // Servidor web con Socket.io y WS 'puro' escuchando
 const PORT = process.env.PORT || 7000;

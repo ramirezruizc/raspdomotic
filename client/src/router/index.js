@@ -1,10 +1,13 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import AuthForm from '../views/AuthFormView.vue'; // Importa tu formulario de autenticación
-import Main from '../views/MainView.vue'; // Main view
-import Dashboard from '../views/DashboardView.vue'; // Main view
-import Analytics from '../views/AnalyticsView.vue'; // Main view
-import Configuration from '../views/ConfigurationView.vue'; // Main view
-import api from '../api'; // Para las peticiones al servidor
+import Main from '../views/MainView.vue'; // View Main view
+import HomeControl from '../views/HomeControlView.vue'; // View Home Control
+import Dashboard from '../views/DashboardView.vue'; // View Dashboard
+import Configuration from '../views/ConfigurationView.vue'; // View Configuration
+import api from '../api/api'; // Para las peticiones al servidor
+
+//View para pruebas aisladas
+//import Pruebas from '../views/PruebasView.vue';
 
 const routes = [
   { path: '/', component: AuthForm }, // Ruta de inicio: Muestra el formulario de login/registro
@@ -12,12 +15,13 @@ const routes = [
   { path: '/app',
     component: Main,
     children: [
-        { path: '', component: Dashboard }, // Página por defecto Dashboard
-        { path: 'analytics', component: Analytics }, // Página de analytics
-        { path: 'configuration', component: Configuration }, //Página de configuration
+        { path: '', component: HomeControl }, // Página por defecto Home Control
+        { path: 'dashboard', component: Dashboard }, // Página de Dashboard
+        { path: 'configuration', component: Configuration }, //Página de Configuration
     ],
     meta: { requiresAuth: true }
-  }
+  },
+  //{ path: '/pruebas', component: Pruebas } //Ruta para pruebas unitarias
 ];
 
 const router = createRouter({

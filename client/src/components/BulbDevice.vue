@@ -12,7 +12,7 @@
 </template>
 
 <script>
-import api from '../api';
+import api from '../api/api';
 import { io } from "socket.io-client";
 
 export default {
@@ -58,16 +58,16 @@ export default {
 
 <style scoped>
 .toggle-container {
-  min-width: auto; /* 🔹 Evita forzar un ancho mínimo */
-  max-width: 100%; /* 🔹 Se adapta sin desbordarse */
+  min-width: auto; /* Evita forzar un ancho mínimo */
+  max-width: 100%; /* Se adapta sin desbordarse */
   flex-grow: 1; 
 }
 
 .toggle-label {
-  flex-shrink: 0; /* 🔹 Evita que se achique el texto */
+  flex-shrink: 0; /* Evita que se achique el texto */
 }
 
-/* 🔹 Estilos del switch */
+/* Estilos del switch */
 .toggle-switch {
   position: relative;
   display: flex;
@@ -75,7 +75,7 @@ export default {
   align-items: center;
   width: 50px;
   height: 24px;
-  min-width: 40px; /* 🔹 Evita que el switch sea demasiado pequeño */
+  min-width: 40px; /* Evita que el switch sea demasiado pequeño */
 }
 
 .toggle-switch input {

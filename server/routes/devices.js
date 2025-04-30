@@ -2,21 +2,21 @@ const express = require('express');
 const { publishMessage } = require('../mqttClient'); // Importa el cliente MQTT
 const router = express.Router();
 const axios = require('axios');
-const authMiddleware = require('../middleware/auth'); // Importa el middleware
+const { authMiddleware } = require('../middleware/auth'); // Importa el middleware
 //const { io } = require('../index'); // Importamos io para emitir eventos
 
-// 🔹 Mapeo de comandos de voz a tópicos y mensajes MQTT
+// Mapeo de comandos de voz a tópicos y mensajes MQTT
 const voiceCommands = {
-    "jeffrey llamar emergencias": { topic: "recovoz/llamada_emergencia", message: "true" },
-    "jeffrey desconectar alarma": { topic: "recovoz/desconectar_alarma", message: "false" },
-    "jeffrey conectar alarma": { topic: "recovoz/conectar_alarma", message: "true" },
-    "jeffrey encender salon frio": { topic: "recovoz/encender_salon1_frio", message: "000000FF00" },
-    "jeffrey encender salon": { topic: "recovoz/encender_salon1", message: "ON" },
-    "jeffrey apagar salon": { topic: "recovoz/apagar_salon1", message: "OFF" },
-    "jeffrey salon al 25%": { topic: "recovoz/salon1_X%", message: "25" },
-    "jeffrey salon al 50%": { topic: "recovoz/salon1_X%", message: "50" },
-    "jeffrey salon al 75%": { topic: "recovoz/salon1_X%", message: "75" },
-    "jeffrey salon al 100%": { topic: "recovoz/salon1_X%", message: "100" }
+    "llamar emergencias": { topic: "recovoz/llamada_emergencia", message: "true" },
+    "desconectar alarma": { topic: "recovoz/desconectar_alarma", message: "false" },
+    "conectar alarma": { topic: "recovoz/conectar_alarma", message: "true" },
+    "encender salon frio": { topic: "recovoz/encender_salon1_frio", message: "000000FF00" },
+    "encender salon": { topic: "recovoz/encender_salon1", message: "ON" },
+    "apagar salon": { topic: "recovoz/apagar_salon1", message: "OFF" },
+    "salon al 25%": { topic: "recovoz/salon1_X%", message: "25" },
+    "salon al 50%": { topic: "recovoz/salon1_X%", message: "50" },
+    "salon al 75%": { topic: "recovoz/salon1_X%", message: "75" },
+    "salon al 100%": { topic: "recovoz/salon1_X%", message: "100" }
 };
 
 // Ruta para obtener los dispositivos del sistema
@@ -123,9 +123,12 @@ router.post('/set-alarma', authMiddleware, async (req, res) => {
     }
 });
 
-// 🔹 Ruta para procesar comandos de voz
+// Ruta para procesar comandos de voz
 router.post('/command', authMiddleware, (req, res) => {
-    const command = removeAccents(req.body.command.toLowerCase());
+    //const command = removeAccents(req.body.command.toLowerCase());
+
+    //Comando ya normalizado desde cliente
+    const command = req.body.command;
 
     if (voiceCommands[command]) {
         const { topic, message } = voiceCommands[command];
@@ -136,10 +139,12 @@ router.post('/command', authMiddleware, (req, res) => {
     }
 });
 
+/*
 // Métodos y funciones auxiliares
-// 🔹 Función para remover acentos
+// Función para remover acentos
 function removeAccents(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
+*/
 
 module.exports = router;

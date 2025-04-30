@@ -41,7 +41,7 @@ export default {
   methods: {
     abrirModal() {
       this.mostrarModal = true;
-      this.socket.emit("request-camera"); // 🚀 Activar cámara
+      this.socket.emit("request-camera"); // Activar cámara
     },
 
     cerrarModal(event) {
@@ -50,7 +50,7 @@ export default {
       // Si no hay evento (llamado directamente) o si es el overlay o si se pulsa sobre cerrar
       if (!event || event.target.classList.contains("overlay") || event.target.tagName === "BUTTON") {
         this.mostrarModal = false;
-        this.socket.emit("close-camera"); // ❌ Detener cámara
+        this.socket.emit("close-camera"); // Detener cámara
         this.frameActual = ""; // Reset de imagen
       }
     }
@@ -59,7 +59,7 @@ export default {
 </script>
 
 <style scoped>
-/* 🔹 Estilos del Modal */
+/* Estilos del Modal */
 .overlay {
   position: fixed;
   top: 0;
@@ -81,8 +81,8 @@ export default {
   text-align: center;
   max-width: 600px;
   width: 90%;
-  max-height: 90vh; /* 🔹 No deja que el modal sea más alto que el 90% de la pantalla */
-  overflow-y: auto; /* 🔹 Permite hacer scroll si el contenido es muy grande */
+  max-height: 90vh; /* No deja que el modal sea más alto que el 90% de la pantalla */
+  overflow-y: auto; /* Permite hacer scroll si el contenido es muy grande */
 }
 
 .camera-container {
@@ -105,28 +105,28 @@ export default {
 }
 
 button {
-  width: 100%; /* 🔹 Ocupar todo el ancho disponible */
-  max-width: 200px; /* 🔹 Limita el ancho máximo */
-  padding: 10px 15px; /* 🔹 Espaciado interno para que el texto no toque los bordes */
+  width: 100%; /* Ocupar todo el ancho disponible */
+  max-width: 200px; /* Limita el ancho máximo */
+  padding: 10px 15px; /* Espaciado interno para que el texto no toque los bordes */
   font-size: 16px;
   background-color: #007bff;
   color: white;
   border: none;
   border-radius: 5px;
   cursor: pointer;
-  display: flex; /* 🔹 Asegura que el contenido se adapte */
-  align-items: center; /* 🔹 Centra el texto verticalmente */
-  justify-content: center; /* 🔹 Centra el texto horizontalmente */
-  text-align: center; /* 🔹 Asegura que el texto esté alineado */
-  white-space: normal; /* 🔹 Permite saltos de línea automáticos */
-  word-wrap: break-word; /* 🔹 Rompe las palabras largas si es necesario */
-  overflow-wrap: break-word; /* 🔹 Alternativa para navegadores modernos */
-  text-overflow: ellipsis; /* 🔹 Si el texto es muy largo, muestra "..." */
+  display: flex; /* Asegura que el contenido se adapte */
+  align-items: center; /* Centra el texto verticalmente */
+  justify-content: center; /* Centra el texto horizontalmente */
+  text-align: center; /* Asegura que el texto esté alineado */
+  white-space: normal; /* Permite saltos de línea automáticos */
+  word-wrap: break-word; /* Rompe las palabras largas si es necesario */
+  overflow-wrap: break-word; /* Alternativa para navegadores modernos */
+  text-overflow: ellipsis; /* Si el texto es muy largo, muestra "..." */
 }
 
 .modal-container button {
-  display: block; /* 🔹 Asegura que el botón sea un bloque */
-  margin: 0 auto; /* 🔹 Centra horizontalmente */
+  display: block; /* Asegura que el botón sea un bloque */
+  margin: 0 auto; /* Centra horizontalmente */
 }
 
 button:hover {

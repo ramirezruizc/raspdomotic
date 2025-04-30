@@ -12,6 +12,7 @@ export default api;
 
 import axios from 'axios';
 import router from '@/router';
+import { useSessionStore } from '@/store/mainStore';
 
 const api = axios.create({
   baseURL: '/api',
@@ -21,7 +22,15 @@ const api = axios.create({
 });
 
 api.interceptors.response.use(
-  response => response,
+  response => {
+    // ¿¿ Comprobar si res.status == 200 ??
+    const sessionStore = useSessionStore();
+    
+    // Reiniciar temporizador en cada operación protegida
+    sessionStore.resetSessionTimer();
+
+    return response;
+  },
   error => {
     if (error.response && error.response.status === 401) {
       const errorMessage = error.response.data?.message || '';

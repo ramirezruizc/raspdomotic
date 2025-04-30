@@ -1,6 +1,6 @@
 import { precacheAndRoute } from 'workbox-precaching';
 
-precacheAndRoute(self.__WB_MANIFEST || []); // Soluciona el error
+precacheAndRoute(self.__WB_MANIFEST || []); // Soluciona el error en compilacion
 
 self.addEventListener("install", (event) => {
     event.waitUntil(self.skipWaiting()); 

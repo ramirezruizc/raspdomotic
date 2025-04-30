@@ -10,6 +10,21 @@ form {
     box-sizing: border-box;
   }
   
+  .info-message {
+    background-color: #fff3cd;
+    color: #856404;
+    border: 1px solid #ffeeba;
+    padding: 10px;
+    border-radius: 6px;
+    margin: 10px 0;
+    font-size: 0.95rem;
+  }
+
+  .info-message.warning {
+    color: #d97706;
+    font-weight: bold;
+  }
+
   input,
   button {
     width: 100%;
@@ -46,7 +61,7 @@ form {
     max-height: 150px;
   }
   
-  /* 🔹 PANTALLA DE CARGA SUPERPUESTA */
+  /* PANTALLA DE CARGA SUPERPUESTA */
   .overlay {
     position: fixed;
     top: 0;
@@ -60,7 +75,7 @@ form {
     z-index: 1000;
   }
   
-  /* 🔹 Contenedor del spinner e íconos */
+  /* Contenedor del spinner e íconos */
   .loading-container {
     display: flex;
     flex-direction: column;
@@ -72,7 +87,7 @@ form {
     text-align: center;
   }
   
-  /* 🔹 Spinner animado */
+  /* Spinner animado */
   .spinner {
     width: 50px;
     height: 50px;

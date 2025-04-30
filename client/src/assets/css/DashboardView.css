@@ -1,106 +1,183 @@
-/* Estilos generales */
 .dashboard {
-    /*display: flex;*/
-    flex-direction: column;
-    align-items: center;
-    gap: 10px;
-    /*margin-top: 25px;*/
-  }
-  
-  /* Evita el autozoom en móviles */
-  input {
-    font-size: 16px; /* Evita que los navegadores móviles hagan zoom en inputs */
-  }
-  
-  h2 {
-    /*display: flex;*/
-    /*align-items: center;*/
-    margin-top: 0;
-    gap: 8px; /* Espacio entre icono y texto */
-  }
-  
-  .category-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Se adapta automáticamente */
-    gap: 10px;
-    width: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-  }
-
-  /* 🔹 Contenedor con scroll para categorías y dispositivos */
-  .categories-container {
-    flex: 1;
-    width: 100%;
-    padding: 10px;
-    box-sizing: border-box;
-    max-height: calc(100vh - 60px); /* Reserva espacio superior */
-    overflow-y: auto; /* Activa el desplazamiento vertical */
-  }
-  
-  /* Contenedor de cada categoría */
-  .device-category-container {
-    background: #f2f2f2;
-    padding: 15px;
-    border-radius: 10px;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-    margin: 0;
-    width: 100%; /* 🔹 Asegura que cada categoría ocupe el 100% del espacio disponible */
-    box-sizing: border-box; /* Asegura que el padding no aumente el tamaño del contenedor */
-  }
-  
-  /* Grid de dispositivos dentro de cada categoría (solo una columna) */
-  .device-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* 🔹 Dispositivos más compactos */
-    gap: 8px;
-    width: 100%;
-    max-height: calc(100vh - 200px); /* Ajusta según la pantalla disponible */
-    overflow-y: auto; /* Activa el scroll si hay demasiados dispositivos */
-  }
-  
-  /* Contenedor de cada dispositivo */
-  .device-container {
-    display: flex;
-    align-items: center;
-    background: #e0e0e0;
-    padding: 10px;
-    border-radius: 10px;
-    box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
-    border: 1px solid #ddd;
-    width: 100%; /* 🔹 Asegura que el dispositivo ocupe todo el ancho del contenedor */
-    max-width: 100%; /* 🔹 Limita el ancho máximo al 100% */
-    margin: 0; /* 🔹 Elimina márgenes */
-    box-sizing: border-box; /* 🔹 Incluye el padding en el cálculo del tamaño */
-  }
-  
-  /* Contenido del dispositivo */
-  .device-content {
-    flex: 1; /* 🔹 Se ajusta automáticamente al ancho del contenedor */
-    min-width: 0; /* 🔹 Previene expansión innecesaria */
-    /*overflow: hidden;  🔹 Evita que el contenido sobresalga */
-    text-overflow: ellipsis; /* 🔹 Si hay texto largo, se corta con "..." */
-    white-space: nowrap; /* 🔹 Evita el corte del texto en varias líneas */
-  }
-  
-  .drag-handle {
-    cursor: grab;
-    font-size: 20px;
-    color: #333;
-    margin-right: 5px; /* 🔹 Espaciado con el contenido */
-    flex-shrink: 0; /* 🔹 Evita que el ícono se comprima */
-  }
-  
-/* 🔹 Ajuste en móviles de hasta 430px */
-@media (max-width: 430px) { 
-  .category-grid {
-    grid-template-columns: repeat(auto-fit minmax(140px, 1fr)); /* 🔹 Dos columnas más compactas */
-  }
+  flex-direction: column;
+  align-items: center;
+  /*padding: 0 2rem; Sin padding vertical, solo horizontal
+  /*padding-left: 2rem;
+  padding-right: 4.5rem;*/
 }
 
-/* 🔹 Ajuste en móviles más estrechos */
-@media (max-width: 360px) {
-  .category-grid {
-    grid-template-columns: 1fr; /* 🔹 Se convierte en una sola columna */
-  }
+.dashboard-wrapper {
+  flex: 1;
+  width: 100%;
+  padding: 20px;
+  box-sizing: border-box;
+  max-height: calc(100vh - 60px); /* Reserva espacio superior */
+  overflow-y: auto; /* Activa el desplazamiento vertical */
+
+  /* máscara de desvanecimiento arriba */
+  mask-image: linear-gradient(to bottom, transparent, black 30px, black 100%);
+  -webkit-mask-image: linear-gradient(to bottom, transparent, black 30px, black 100%);
+}
+
+h1 {
+  /*display: flex;*/
+  /*align-items: center;*/
+  margin-top: 40px;
+  margin-bottom: 0;
+  gap: 8px; /* Espacio entre icono y texto */
+}
+
+.toggle-filters {
+  margin-bottom: 1rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  font-size: 1rem;
+  color: #007ad9;
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+}
+
+.toggle-filters.small {
+  font-size: 0.8rem; /* Reduce el tamaño del texto */
+  padding: 0.2rem 0.5rem; /* Ajusta el padding */
+}
+
+.toggle-filters.small i {
+  font-size: 0.9rem; /* Reduce el tamaño del icono */
+}
+
+.filters-container {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  gap: 1rem;
+  margin-bottom: 2rem;
+  border: 1px solid #ccc;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: #f2f2f2;
+}
+
+.filters-left {
+  flex: 3;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  min-width: 0; /* importante para que los elementos no crezcan indefinidamente */
+}
+
+.filters-right {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding-left: 1rem;
+}
+
+.filter-group label {
+  font-weight: bold;
+  margin-bottom: 0.3rem;
+  display: block;
+}
+
+/* Estilo unificado para Calendar y MultiSelect */
+.calendar.small,
+.multiselect.small {
+  font-size: 0.85rem;
+  width: 100%;
+  max-width: 100%;
+}
+
+/* Evitar que el multiselect crezca y desborde */
+.p-multiselect-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  display: block;
+}
+
+/* Botón de búsqueda */
+.search-button {
+  background-color: #007ad9;
+  color: white;
+  border: none;
+  border-radius: 50%;
+  width: 2.5rem;
+  height: 2.5rem;
+  font-size: 1.2rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.search-button:disabled {
+  background-color: #ccc;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
+/* Gráficos */
+.chart-container {
+  margin-top: 2rem;
+}
+
+/* Transición */
+.fade-enter-active, .fade-leave-active {
+  transition: opacity 0.3s ease;
+}
+.fade-enter-from, .fade-leave-to {
+  opacity: 0;
+}
+
+::v-deep(.p-calendar),
+::v-deep(.p-calendar *),
+::v-deep(.p-datepicker),
+::v-deep(.p-datepicker *) {
+  /*font-family: inherit !important;*/
+  font-size: 0.85rem !important;
+  text-align: center;
+}
+
+::v-deep(.p-calendar input::placeholder) {
+  text-align: center;
+}
+
+::v-deep(.apply-button) {
+  background-color: #007ad9;
+  color: white;
+  border: none;
+  padding: 0.4rem 1rem;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+/* Oculta el botón "Hoy" del calendario */
+::v-deep(.p-datepicker-buttonbar .p-button:first-child) {
+  display: none !important;
+}
+
+.field-error {
+  color: red;
+  font-size: 0.8rem;
+  margin-top: 0.2rem;
+}
+
+/* Sin datos */
+.no-data-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  background-color: #f8f9fa;
+  border-radius: 12px;
+  color: #555;
+}
+
+.info-icon {
+  font-size: 2rem;
+  margin-bottom: 0.5rem;
 }
