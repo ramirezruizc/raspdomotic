@@ -32,10 +32,42 @@ router.get('/get-devices', authMiddleware, async (req, res) => {
 
 // Ruta para encender/apagar la bombilla
 router.post('/toggle-bulb', authMiddleware, async (req, res) => {
-    const { estado } = req.body; // estado "ON" u "OFF"
+    //const { estado } = req.body; // estado "ON" u "OFF"
+    //const { estado, brillo, color } = req.body;
+    const { estado, hsbColor } = req.body;
     console.log("valor de bombilla", estado);
-    const topic = 'cmnd/tasmota/salon1/POWER'; // Cambia por el tópico de tu dispositivo Tasmota
-    const message = estado.toUpperCase(); // Convertir a mayúsculas para Tasmota
+    //const topic = 'cmnd/tasmota/salon1/POWER'; // Indicar el topico correspondiente de tasmota (salon1)
+    //const message = estado.toUpperCase(); // Convertir a mayúsculas para Tasmota
+
+    //const colorRGB = hexToRgb(color); // "#ffaa33" → "255,170,51"
+    //const dimmerValue = Math.round(brillo); // 1–100
+    const powerState = estado.toUpperCase(); // "ON" o "OFF"
+    //const command = `POWER ${powerState}; Dimmer ${dimmerValue}; Color ${colorRGB}`;
+    const topic = 'cmnd/tasmota/salon1/backlog';
+
+    const comandos = [];
+
+    if (powerState === "OFF") {
+        comandos.push("Power OFF"); // Solo apagado
+    } else {
+        comandos.push("Power ON");
+        //if (brillo !== undefined) comandos.push(`Dimmer ${brillo}`);
+        
+        /*if (color) {
+          // Convertir #RRGGBB a formato de Tasmota (ej: "FF0000" sin #)
+          const colorHex = color.replace("#", "").toUpperCase();
+          comandos.push(`Color ${colorHex}`);
+        }*/
+
+        if (hsbColor && typeof hsbColor.h === 'number') {
+            const { h, s, b } = hsbColor;
+            comandos.push(`HSBColor ${h},${s},${b}`);
+        }
+    }
+
+    const command = `Backlog ${comandos.join("; ")}`;
+
+    console.log("Comando a tasmota:", command);
 
     try 
     {
@@ -50,7 +82,7 @@ router.post('/toggle-bulb', authMiddleware, async (req, res) => {
                 return res.status(500).json({ message: "Error interno del servidor" });
             }
 
-            publishMessage(topic, message);
+            publishMessage(topic, command);
 
             const bulbState = estado.toUpperCase() === "ON";
 
@@ -146,5 +178,13 @@ function removeAccents(str) {
     return str.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 }
 */
+
+function hexToRgb(hex) {
+    const bigint = parseInt(hex.replace("#", ""), 16);
+    const r = (bigint >> 16) & 255;
+    const g = (bigint >> 8) & 255;
+    const b = bigint & 255;
+    return `${r},${g},${b}`;
+}
 
 module.exports = router;

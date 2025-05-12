@@ -4,17 +4,19 @@
       Ver Cámara
     </button>
 
-    <div v-if="mostrarModal" class="overlay" @click="cerrarModal">
-      <div class="modal-container" @click.stop>
-        <h2>📷 Stream de la Cámara</h2>
+    <teleport to="#modals">
+      <div v-if="mostrarModal" class="overlay" @click="cerrarModal">
+        <div class="modal-container" @click.stop>
+          <h2>📷 Stream de la Cámara</h2>
 
-        <div class="camera-container">
-          <img :src="frameActual" alt="Stream de la cámara">
+          <div class="camera-container">
+            <img :src="frameActual" alt="Stream de la cámara">
+          </div>
+
+          <button @click="cerrarModal">Cerrar</button>
         </div>
-
-        <button @click="cerrarModal">Cerrar</button>
       </div>
-    </div>
+    </teleport>
   </div>
 </template>
 
@@ -131,5 +133,19 @@ button {
 
 button:hover {
   background-color: #0056b3;
+}
+
+@media (orientation: portrait) {
+  .camera-container {
+    aspect-ratio: 1 / 1; /* cuadrado en vertical */
+    max-height: 60vh;
+  }
+}
+
+@media (orientation: landscape) {
+  .camera-container {
+    aspect-ratio: 16 / 9; /* más apaisado */
+    max-height: 70vh;
+  }
 }
 </style>

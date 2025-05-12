@@ -2,6 +2,7 @@
   <div id="app">
     <router-view></router-view> <!-- Esto renderiza el componente correspondiente según la ruta -->
   </div>
+  <div id="modals"></div> <!-- Aquí permitimos que con <teleport> los modales escapen de las restricciones de estilos -->
 </template>
 
 <script>

@@ -2,12 +2,39 @@
   <div class="toggle-container">
     <span class="toggle-label">Salón:</span>
 
-    <label class="toggle-switch">
-      <input type="checkbox" v-model="bulbState" @change="toggleBulb" />
-      <span class="slider"></span>
-    </label>
+    <div class="toggle-group-vertical">
+      <div class="toggle-row">
+        <label class="toggle-switch">
+          <input type="checkbox" v-model="bulbState" @change="toggleBulb" />
+          <span class="slider"></span>
+        </label>
 
-    <span class="toggle-label">{{ bulbState ? "ON" : "OFF" }}</span>
+        <button class="config-button" @click="showModal = true">⚙️</button>
+      </div>
+
+      <span class="toggle-state">{{ bulbState ? "ON" : "OFF" }}</span>
+    </div>
+
+    <!-- Modal de configuración -->
+    <teleport to="#modals">
+      <div v-if="showModal" class="overlay" @click.self="showModal = false">
+        <div class="modal-container">
+          <h3>Configuración de luz</h3>
+
+          <div class="control-group">
+            <label>Brillo: {{ brightness }}%</label>
+            <input type="range" min="1" max="100" v-model="brightness" @change="setBrightness" />
+          </div>
+
+          <div class="control-group">
+            <label>Color:</label>
+            <input type="color" v-model="color" @change="setColor" />
+          </div>
+
+          <button @click="showModal = false">Cerrar</button>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
@@ -20,6 +47,9 @@ export default {
     return {
       bulbState: false,
       socket: null,
+      showModal: false,
+      brightness: 50,
+      color: "#ffffff",
     };
   },
   async mounted() {
@@ -42,8 +72,16 @@ export default {
       const estadoPrevio = !this.bulbState;
       const newState = this.bulbState ? "ON" : "OFF";
 
+      const hsb = hexToHsb(this.color);
+      hsb.b = this.brightness;
+
+      console.log("Configuración luminica", hsb);
+
       try {
-        const response = await api.post('/devices/toggle-bulb', { estado: newState });
+        const response = await api.post('/devices/toggle-bulb', { 
+          estado: newState,
+          hsbColor: hsb
+         });
         if (!response.data.success) {
           throw new Error(response.data.message || "Error desconocido");
         }
@@ -54,6 +92,36 @@ export default {
     }
   }
 };
+
+function hexToHsb(hex) {
+  hex = hex.replace(/^#/, '');
+  const r = parseInt(hex.substr(0, 2), 16) / 255;
+  const g = parseInt(hex.substr(2, 2), 16) / 255;
+  const b = parseInt(hex.substr(4, 2), 16) / 255;
+
+  const max = Math.max(r, g, b), min = Math.min(r, g, b);
+  let h, s, v = max;
+
+  const d = max - min;
+  s = max === 0 ? 0 : d / max;
+
+  if (max === min) {
+    h = 0; // achromatic
+  } else {
+    switch (max) {
+      case r: h = (g - b) / d + (g < b ? 6 : 0); break;
+      case g: h = (b - r) / d + 2; break;
+      case b: h = (r - g) / d + 4; break;
+    }
+    h /= 6;
+  }
+
+  return {
+    h: Math.round(h * 360),
+    s: Math.round(s * 100),
+    b: Math.round(v * 100)
+  };
+}
 </script>
 
 <style scoped>
@@ -61,6 +129,23 @@ export default {
   min-width: auto; /* Evita forzar un ancho mínimo */
   max-width: 100%; /* Se adapta sin desbordarse */
   flex-grow: 1; 
+}
+
+.toggle-group-vertical {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+.toggle-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toggle-state {
+  margin-top: 4px;
+  font-weight: bold;
 }
 
 .toggle-label {
@@ -114,5 +199,61 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(26px);
+}
+
+.config-button {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+/* Modal */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-container {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-container button {
+  display: block;
+  margin: 20px auto 0 auto;
+  width: 100%;
+  max-width: 200px;
+  padding: 10px 15px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.modal-container button:hover {
+  background-color: #0056b3;
+}
+
+.control-group {
+  margin-bottom: 15px;
 }
 </style>
