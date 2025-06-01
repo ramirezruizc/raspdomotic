@@ -198,7 +198,7 @@ export default defineComponent({
       try {
         const fetched = await getUsersList();
         users.value = fetched
-          .filter(user => user.role?.includes('s-user') === false)
+          .filter(user => !user.isSystem && !(user.role || []).includes('s-user'))
           .map(user => ({
             ...user,
             role: Array.isArray(user.role)

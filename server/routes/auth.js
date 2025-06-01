@@ -2,7 +2,7 @@ const express = require('express');
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const SystemConfig = require('../models/SystemConfig');
-const { authMiddleware, isAdminMiddleware } = require('../middleware/auth');
+const { authMiddleware, isAdminMiddleware, isSUserMiddleware } = require('../middleware/auth');
 const logEvent = require('../utils/logEvent');
 const mongoose = require('mongoose');
 const router = express.Router();
@@ -17,12 +17,15 @@ router.post('/register', async (req, res) => {
     const userExists = await User.findOne({ username });
     if (userExists) return res.status(400).json({ message: 'El usuario ya existe' });
 
-    // Verifica si es el primer usuario
-    const userCount = await User.countDocuments();
-    const role = userCount === 0 ? ['s-user', 'admin'] : 'user';
+    // Verifica si ya existe un s-user del sistema, si no, el registro de
+    // usuario se hará con ese rol, con privilegios especiales (nuke-database)
+    const hasSuperUser = await User.exists({ role: 's-user' });
+
+    // Asignar rol según si es el primer s-user o no
+    const role = !hasSuperUser ? ['s-user', 'admin'] : ['user'];
 
     // Verificar estado del sistema
-    const config = await SystemConfig.findOne() || await SystemConfig.create({});
+    const config = await SystemConfig.findOne();
 
     if (!config.allowRegistration && !role.includes('admin')) {
       return res.status(403).json({ message: 'Registro deshabilitado por el administrador.' });
@@ -72,6 +75,10 @@ router.post('/login', async (req, res) => {
   try {
     const user = await User.findOne({ username });
     if (!user) return res.status(401).json({ message: 'Usuario no encontrado' });
+
+    if (user.isSystem) {
+      return res.status(403).json({ message: 'Este usuario no puede iniciar sesión.' });
+    }
 
     const isMatch = await user.comparePassword(password);
 
@@ -127,7 +134,7 @@ router.post('/login', async (req, res) => {
     });
 
     /*
-    // NOTA: En este ejemplo, si deseas emitir un evento por WebSocket, hazlo a través de req.app
+    // NOTA: En este ejemplo, si se desea emitir un evento por WebSocket, se hace a traves de req.app
     const io = req.app.get("io");
     if (io) {
       io.emit("login_ok", { userId: user._id, message: "Usuario autenticado correctamente" });
@@ -230,7 +237,7 @@ router.post('/logout', async (req, res) => {
 });
 
 // Ruta para eliminar la base de datos (solo accesible para admin)
-router.delete('/nuke-database', authMiddleware, isAdminMiddleware, async (req, res) => {
+router.delete('/nuke-database', authMiddleware, isSUserMiddleware, async (req, res) => {
   const { confirmStep1, confirmStep2 } = req.body;
 
   // Validación de las dos confirmaciones
@@ -251,7 +258,7 @@ router.delete('/nuke-database', authMiddleware, isAdminMiddleware, async (req, r
 
 router.get('/users-list', async (req, res) => {
   try {
-    const users = await User.find({}, 'username role').lean();
+    const users = await User.find({}, 'username role isSystem').lean();
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -273,13 +280,22 @@ router.post('/set-role', authMiddleware, isAdminMiddleware, async (req, res) => 
   }
 
   try {
-    const user = await User.findOneAndUpdate(
+    /*const user = await User.findOneAndUpdate(
       { username },
       { role },
       { new: true }
-    );
+    );*/
+
+    const user = await User.findOne({ username });
 
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    if (user.isSystem || (user.role || []).includes('s-user')) {
+      return res.status(403).json({ message: 'No se puede modificar este usuario del sistema' });
+    }
+
+    user.role = role;
+    await user.save();
 
     res.json({ message: `Rol de ${username} actualizado a ${role}` });
   } catch (error) {
@@ -297,11 +313,19 @@ router.post('/delete-user', authMiddleware, isAdminMiddleware, async (req, res) 
   }
 
   try {
-    const user = await User.findOneAndDelete({ username });
+    //const user = await User.findOneAndDelete({ username });
+
+    const user = await User.findOne({ username });
 
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
     }
+
+    if (user.isSystem || (user.role || []).includes('s-user')) {
+      return res.status(403).json({ message: 'No se puede eliminar este usuario del sistema' });
+    }
+
+    await User.deleteOne({ _id: user._id });
 
     res.json({ message: `Usuario ${username} eliminado correctamente` });
   } catch (error) {

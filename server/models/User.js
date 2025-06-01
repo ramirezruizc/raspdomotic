@@ -6,14 +6,15 @@ const UserSchema = new mongoose.Schema({
   password: { type: String, required: true },
   role: {
     type: [String],
-    enum: ['s-user', 'user', 'admin'],
+    enum: ['s-user', 'user', 'admin', 'system'],
     default: ['user'],
   },
-  tokens: { token: String }, // Almacena el token emitido
+  tokens: { token: String }, // Almacena el token emitido para el usuario
   layout: { // Almacena el esquema del Home Control del usuario
     type: Array, 
     default: [] 
-  }
+  },
+  isSystem: { type: Boolean, default: false }
 });
 
 // Middleware para cifrar contraseñas

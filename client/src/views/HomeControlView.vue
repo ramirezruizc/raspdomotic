@@ -21,7 +21,13 @@
                 <div class="device-container">
                   <span class="drag-handle"><i class="pi pi-ellipsis-v"></i></span>
                   <div class="device-content">
-                    <component :is="getComponent(device.type)" v-if="getComponent(device.type)" :key="device.id" />
+                    <component
+                      :is="getComponent(device.type)"
+                      v-if="getComponent(device.type)"
+                      :key="device.id"
+                      :deviceId="device.deviceId"
+                      :deviceName="device.deviceName"
+                      />
                   </div>
                 </div>
               </template>
@@ -106,7 +112,9 @@ export default {
               const match = devicePool[key].shift();
               validDevices.push({
                 id: savedDevice.id, // Usamos el ID antiguo
-                type: savedDevice.type
+                type: savedDevice.type,
+                deviceId: match.id,             // ID real (ej: ESPURNA-SWITCH1)
+                deviceName: match.name
               });
               usedIds.add(match.originalId); // Marcamos como usado
             }
@@ -136,7 +144,7 @@ export default {
 
             // Generar nuevo ID único
             const newId = `temp-id-${tempIdCounter++}`;
-            categoryGroup.devices.push({ id: newId, type: dev.type });
+            categoryGroup.devices.push({ id: newId, type: dev.type, deviceId: dev.id });
             usedIds.add(dev.originalId);
           }
         }

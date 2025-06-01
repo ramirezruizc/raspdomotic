@@ -100,6 +100,13 @@ router.get('/summary', async (req, res) => {
 router.post('/set-events', async (req, res) => {
   const { eventType, user, device, additionalInfo } = req.body;
 
+  // Log para depuración
+  console.log('📥 Evento recibido:');
+  console.log('Tipo:', eventType);
+  console.log('Usuario:', user);
+  console.log('Dispositivo:', device);
+  console.log('Info adicional:', additionalInfo);
+
   try {
     const newEvent = new Event({
       eventType,
@@ -109,7 +116,7 @@ router.post('/set-events', async (req, res) => {
     });
 
     await newEvent.save();
-    res.status(201).json({ message: 'Evento registrado exitosamente', event: newEvent });
+    res.status(201).json({ message: 'Evento registrado con éxito', event: newEvent });
   } catch (error) {
     res.status(500).json({ message: 'Error registrando evento', error });
   }

@@ -1,6 +1,6 @@
 import { defineAsyncComponent } from 'vue';
 
-const components = ['AlarmDevice', 'CameraDevice', 'BulbDevice', 'SwitchDevice'];
+const components = ['AlarmDevice', 'CameraDevice', 'BulbDevice', 'SwitchDevice', 'AirConditioningDevice'];
 
 const componentMap = {};
 components.forEach(name => {

@@ -1,6 +1,18 @@
 <template>
   <div class="toggle-container">
-    <span class="toggle-label">Salón:</span>
+    <!-- Spinner overlay -->
+    <div v-if="isLoading" class="blocker-overlay">
+      <div class="spinner"></div>
+    </div>
+
+    <!-- Overlay para error -->
+    <div v-if="hasError" class="blocker-overlay">
+      <button class="retry-button" @click="retryFetch" :disabled="isLoading">
+        <i class="pi pi-refresh" :class="{ 'pi-spin': isLoading }"></i>
+      </button>
+    </div>
+
+    <span class="toggle-label">Luz Salon1:</span>
 
     <div class="toggle-group-vertical">
       <div class="toggle-row">
@@ -23,12 +35,12 @@
 
           <div class="control-group">
             <label>Brillo: {{ brightness }}%</label>
-            <input type="range" min="1" max="100" v-model="brightness" @change="setBrightness" />
+            <input type="range" min="1" max="100" v-model.number="brightness" @input="setBrightness" />
           </div>
 
           <div class="control-group">
             <label>Color:</label>
-            <input type="color" v-model="color" @change="setColor" />
+            <input type="color" v-model="color" @input="setColor" />
           </div>
 
           <button @click="showModal = false">Cerrar</button>
@@ -50,6 +62,7 @@ export default {
       showModal: false,
       brightness: 50,
       color: "#ffffff",
+      hsbColor: null,
     };
   },
   async mounted() {
@@ -62,7 +75,18 @@ export default {
 
     try {
       const response = await api.get('/devices/get-bulb');
-      this.bulbState = response.data.estado;
+
+      console.log("Respuesta GET del Bulb:", response.data);
+
+      const { estado, hsbColor } = response.data;
+      this.bulbState = estado;
+
+      if (hsbColor) {
+      this.hsbColor = { ...hsbColor };
+      this.brightness = hsbColor.b;
+      this.color = hsbToHex(hsbColor.h, hsbColor.s, hsbColor.b);
+    }
+
     } catch (error) {
       console.error("❌ Error al obtener el estado de la bombilla:", error);
     }
@@ -89,10 +113,53 @@ export default {
         console.error("❌ Error al cambiar estado de la bombilla", error);
         this.bulbState = estadoPrevio;
       }
+    },
+
+    async updateBulbBrightColor() {
+      console.log("🎯 Ejecutando updateBulbBrightColor", {
+      brightness: this.brightness,
+      color: this.color
+      });
+
+      const hsb = hexToHsb(this.color);
+      hsb.b = this.brightness;
+      
+      console.log("🔧 Enviando al backend:", hsb);
+
+      try {
+        await api.post('/devices/set-bulb-bright-color', { hsbColor: hsb });
+      } catch (error) {
+        console.error("❌ Error al actualizar color o brillo:", error);
+      }
+    },
+
+    setBrightness() {
+      this.updateBulbBrightColor();
+    },
+
+    setColor() {
+      this.updateBulbBrightColor();
     }
   }
 };
 
+// Tasmota envia el estado de la bombilla RBG en formato hsb
+// y Color picker (elemento UI) solo acepta hexadecimales como #RRGGBB
+function hsbToHex(h, s, b) {
+  s /= 100;
+  b /= 100;
+
+  const k = (n) => (n + h / 60) % 6;
+  const f = (n) => b - b * s * Math.max(Math.min(k(n), 4 - k(n), 1), 0);
+
+  const r = Math.round(f(5) * 255);
+  const g = Math.round(f(3) * 255);
+  const b_ = Math.round(f(1) * 255);
+
+  return `#${((1 << 24) + (r << 16) + (g << 8) + b_).toString(16).slice(1)}`;
+}
+
+// Funcion auxiliar para convertir parametros hexadecimal a formato hsb
 function hexToHsb(hex) {
   hex = hex.replace(/^#/, '');
   const r = parseInt(hex.substr(0, 2), 16) / 255;
@@ -255,5 +322,47 @@ input:checked + .slider:before {
 
 .control-group {
   margin-bottom: 15px;
+}
+
+/* Spinner overlay */
+.blocker-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: rgba(255, 255, 255, 0.85);
+  width: 100%;
+  height: 100%;
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 12px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(0, 0, 0, 0.2);
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.retry-button {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #007bff;
+  cursor: pointer;
+}
+
+.retry-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

@@ -52,6 +52,14 @@ const isAdminMiddleware = (req, res, next) => {
     return res.status(403).json({ message: '⛔ Acceso solo para administradores' });
 };
 
+// Extensión para comprobar si el rol del usuario es s-user o no
+const isSUserMiddleware = (req, res, next) => {
+    if (req.user && req.user.role.includes('s-user')) {
+        return next();
+    }
+    return res.status(403).json({ message: '⛔ Acción solo permitida para s-user' });
+};
+
 const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
       if (!allowedRoles.includes(req.user.role)) {
@@ -61,4 +69,4 @@ const authorizeRoles = (...allowedRoles) => {
     };
 };
 
-module.exports = { authMiddleware, isAdminMiddleware, authorizeRoles };
+module.exports = { authMiddleware, isAdminMiddleware, isSUserMiddleware, authorizeRoles };

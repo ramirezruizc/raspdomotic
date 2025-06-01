@@ -143,7 +143,7 @@ export default {
         this.allowRegistration = config.allowRegistration;
         this.maintenanceMode = config.maintenanceMode;
 
-        if (!config.usersExist) {
+        if (config.initialSetup) {
           this.isLogin = false;
           this.initialSetup = true;
         }
