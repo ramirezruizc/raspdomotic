@@ -334,7 +334,7 @@ router.post('/delete-user', authMiddleware, isAdminMiddleware, async (req, res) 
   }
 });
 
-// 🔹 Ruta protegida (Verifica el token)
+// Ruta protegida (Verifica el token)
 router.get('/protected-route', authMiddleware, (req, res) => {
   res.json({ message: 'Acceso concedido' });
 });

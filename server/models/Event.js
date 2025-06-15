@@ -1,7 +1,7 @@
 const mongoose = require('mongoose');
 
 const EventSchema = new mongoose.Schema({
-  eventType: { // Tipo de evento: 'alarm_connected', 'intrusion', 'bulb_on', 'bulb_off', 'camera_access'
+  eventType: { // Tipo de evento: 'alarm_connected', 'intrusion', 'bulb_on', 'bulb_off', 'camera_access', etc.
     type: String, 
     required: true
   },

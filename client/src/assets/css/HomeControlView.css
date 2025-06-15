@@ -39,7 +39,7 @@ h2 {
   box-sizing: border-box;
 }
 
-/* 🔹 Contenedor con scroll para categorías y dispositivos */
+/* Contenedor con scroll para categorías y dispositivos */
 .categories-container {
   flex: 1;
   width: 100%;
@@ -61,7 +61,7 @@ h2 {
   border: 1px solid #ccc;
   box-shadow: 2px 2px 5px rgba(0, 0, 0, 0.1);
   margin: 0;
-  width: 100%; /* 🔹 Asegura que cada categoría ocupe el 100% del espacio disponible */
+  width: 100%; /* Asegura que cada categoría ocupe el 100% del espacio disponible */
   box-sizing: border-box; /* Asegura que el padding no aumente el tamaño del contenedor */
 }
 
@@ -104,7 +104,7 @@ h2 {
   font-size: 20px;
   color: #333;
   margin-right: 5px; /* Espaciado con el contenido */
-  flex-shrink: 0; /* Evita que el ícono se comprima */
+  flex-shrink: 0; /* Evita que el icono se comprima */
 }
   
 /* Ajuste en móviles de hasta 430px */

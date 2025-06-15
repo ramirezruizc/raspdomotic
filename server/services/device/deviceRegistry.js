@@ -8,7 +8,7 @@ function registryDevices(newDevices) {
       const resolvedTopics = {};
 
       if (!device.topics) {
-        console.warn(`⚠️ Dispositivo con protocolo ESPURNA sin topics definidos: ${device.id}`);
+        console.warn(`⚠️ Dispositivo ESPURNA sin topics definidos: ${device.id}`);
         return device; // lo devuelves sin modificar, y evitará crash
       }
 
@@ -25,7 +25,26 @@ function registryDevices(newDevices) {
         topics: resolvedTopics,
       };
 
-      return updatedDevice; 
+      return updatedDevice;
+    } else if (device.firmware === 'tasmota') {
+      const base = device.id;
+      const resolvedTopics = {};
+
+      if (!device.topics) {
+        console.warn(`⚠️ Dispositivo TASMOTA sin topics definidos: ${device.id}`);
+        return device;
+      }
+
+      for (const [key, [prefix, suffix]] of Object.entries(device.topics)) {
+        resolvedTopics[key] = `${prefix}${base}${suffix}`;
+      }
+
+      const updatedDevice = {
+        ...device,
+        topics: resolvedTopics,
+      };
+
+      return updatedDevice;
     }
 
     if (!device.topics) {

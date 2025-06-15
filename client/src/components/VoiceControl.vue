@@ -163,7 +163,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px; /* Espacio vertical entre íconos */
+  gap: 10px; /* Espacio vertical entre iconos */
 }
 
 .help-icon {

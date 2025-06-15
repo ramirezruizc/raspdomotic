@@ -75,7 +75,7 @@ form {
     z-index: 1000;
   }
   
-  /* Contenedor del spinner e íconos */
+  /* Contenedor del spinner e iconos */
   .loading-container {
     display: flex;
     flex-direction: column;
@@ -104,7 +104,7 @@ form {
     }
   }
   
-  /* 🔹 Iconos de estado */
+  /* Iconos de estado */
   .status-icon {
     font-size: 50px;
     margin-bottom: 10px;

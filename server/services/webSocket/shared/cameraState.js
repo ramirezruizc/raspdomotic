@@ -1,8 +1,8 @@
 //Servicio para gestionar el estado streaming
 //de la cámara. Se hacen uso de dos tipos de
-//WebSocket, uno mas primitivo para comunicarse
+//WebSocket, uno mas "primitivo" para comunicarse
 //con ESP32-CAM, y socket.io para gestión
-//de clientes conectados mediante  interfaz
+//de clientes conectados mediante interfaz
 //de usuario PWA. Sirve de enlace ya que hay
 //información que debe compartirse entre los
 //dos modos de comunicación WebSocket

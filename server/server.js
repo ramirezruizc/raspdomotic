@@ -10,12 +10,14 @@ const { initSocketIo } = require('./services/webSocket/socketIoManager');
 const { initWss } = require('./services/webSocket/wssManager');
 const mqttClient = require('./services/mqtt/mqttClient');
 const { loadDevicesFromNodeRed } = require('./services/device/deviceLoader');
+const { initScheduleExecutor } = require('./services/scheduler/schedulerExecutor');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
 const deviceRoutes = require('./routes/devices');
 const eventRoutes = require('./routes/events');
 const systemConfigRoutes = require('./routes/systemConfig');
+const scheduleRoutes = require('./routes/schedule');
 const { log } = require('console');
 
 const app = express();
@@ -76,6 +78,9 @@ async function startServer() {
     console.log("🔄 Inicializando cliente MQTT...");
     mqttClient.initMqtt(io);
 
+    // Inicializar planificación
+    initScheduleExecutor();
+
     //Por el momento, habilito la posibilidad
     //de llamar a io desde cualquier parte de
     //la aplicación para usar io.emit(xx, yy)
@@ -87,12 +92,13 @@ async function startServer() {
     app.set('io', io);
 
     // Rutas
-    app.use('/api/auth', authRoutes);
+    app.use('/api/v1/auth', authRoutes);
     //Rutas susceptibles de comunicacion por MQTT y Socket.io
     //Inyeccion de dependencias
-    app.use('/api/devices', deviceRoutes(mqttClient, io));
-    app.use('/api/events', eventRoutes);
-    app.use('/api/systemConfig', systemConfigRoutes);
+    app.use('/api/v1/devices', deviceRoutes(mqttClient, io));
+    app.use('/api/v1/events', eventRoutes);
+    app.use('/api/v1/systemConfig', systemConfigRoutes);
+    app.use('/api/v1/schedule', scheduleRoutes);
 
     const PORT = process.env.PORT || 7000;
     server.listen(PORT, '0.0.0.0', () => {

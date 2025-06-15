@@ -15,9 +15,12 @@ import router from '@/router';
 import { useSessionStore } from '@/store/mainStore';
 
 const api = axios.create({
-  baseURL: '/api',
+  //Primera versión API del sistema. Se podrán generar futuras versiones
+  //junto con el ajuste para apuntar a la versión concreta en nginx, así
+  //como las rutas vue definidas a nivel server.js app.use('/api/v1/...')
+  baseURL: '/api/v1',
   headers: { 'Content-Type': 'application/json' },
-  //withCredentials: true, // Necesario para enviar cookies (token) con cada solicitud
+  //withCredentials: true, // Necesario para enviar cookies (con token) en cada solicitud
   withCredentials: false, // Si Node-RED no usa autenticación, debe ser false
 });
 

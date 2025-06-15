@@ -1,5 +1,5 @@
 <template>
-  <div class="toggle-container" style="position: relative;">
+  <div class="toggle-container">
     <!-- Spinner overlay -->
     <div v-if="isLoading" class="blocker-overlay">
       <div class="spinner"></div>
@@ -17,21 +17,47 @@
     <div class="toggle-group-vertical">
       <div class="toggle-row">
         <label class="toggle-switch">
-          <input type="checkbox" v-model="switchState" @change="toggleSwitch" />
+          <input type="checkbox" v-model="switchState" @change="toggleSwitch" :disabled="hasError || isLoading"/>
           <span class="slider"></span>
         </label>
+
+        <button class="config-button" @click="showModal = true" :disabled="hasError || isLoading">⚙️</button>
       </div>
 
       <span class="toggle-state">{{ switchState ? "ON" : "OFF" }}</span>
     </div>
+
+    <!-- Modal de Planificacion -->
+    <teleport to="#modals">
+      <div v-if="showModal" class="overlay" @click.self="showModal = false">
+        <div class="modal-container">
+          <h3>Planificación de {{ deviceName }}</h3>
+
+          <SchedulePlanner
+            :value="schedule"
+            @update="schedule = $event"
+            @save="saveSchedule"
+          />
+
+          <div class="modal-buttons">
+            <button @click="showModal = false" class="modal-button">Cerrar</button>
+          </div>
+        </div>
+      </div>
+    </teleport>
   </div>
 </template>
 
 <script>
 import api from "../api/api";
 import { io } from "socket.io-client";
+import SchedulePlanner from '../components/SchedulePlanner.vue';
 
 export default {
+  components: {
+    SchedulePlanner
+  },
+
   props: {
     deviceId: {
       type: String,
@@ -50,11 +76,14 @@ export default {
       isLoading: true,
       hasError: false,
       timeoutId: null,
+      showModal: false,
+      schedule: { days: [], slots: [], enforceOutsideSlot: false }
     };
   },
-  mounted() {
+  async mounted() {
     this.setupSocket();
     this.fetchInitialStateWithTimeout();
+    await this.fetchSchedule();
   },
   beforeUnmount() {
     if (this.socket) this.socket.disconnect();
@@ -107,10 +136,10 @@ export default {
           this.hasError = true;
           this.isLoading = false;
         }
-      }, 10000);
+      }, 3000);
 
       try {
-        const response = await api.get(`/devices/${this.deviceId}/switch`);
+        const response = await api.get(`/devices/${this.deviceId}/switch/status`);
 
         const { relayStatus, isOnline } = response.data;
 
@@ -133,8 +162,29 @@ export default {
         console.error("❌ Error en fetch inicial del switch:", error);
         this.hasError = true;
         this.isLoading = false;
-        clearTimeout(this.timeoutId); // Cancelamos timeout si falla de inmediato
+        clearTimeout(this.timeoutId);
         this.timeoutId = null;
+      }
+    },
+
+    async fetchSchedule() {
+      try {
+        const { data } = await api.get(`/schedule/${this.deviceId}`);
+        if (data.success) {
+          this.schedule = data.schedule;
+        }
+      } catch (error) {
+          console.error("❌ Error al obtener planificación:", error);
+      }
+    },
+
+    async saveSchedule() {
+      try {
+        await api.post(`/schedule/${this.deviceId}`, this.schedule);
+        alert("✅ Planificación guardada correctamente");
+      } catch (err) {
+          console.error("❌ Error al guardar planificación:", err);
+          alert("❌ No se pudo guardar la planificación");
       }
     },
 
@@ -174,7 +224,8 @@ export default {
 .toggle-container {
   min-width: auto; /* Evita forzar un ancho mínimo */
   max-width: 100%; /* Se adapta sin desbordarse */
-  flex-grow: 1; 
+  flex-grow: 1;
+  position: relative;
 }
 
 .toggle-group-vertical {
@@ -245,6 +296,86 @@ input:checked + .slider {
 
 input:checked + .slider:before {
   transform: translateX(26px);
+}
+
+.config-button {
+  background: none;
+  border: none;
+  font-size: 1.4rem;
+  cursor: pointer;
+}
+
+/* Modal */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+.modal-container {
+  background: white;
+  padding: 20px;
+  border-radius: 10px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.5);
+  text-align: center;
+  max-width: 600px;
+  width: 90%;
+  max-height: 90vh;
+  overflow-y: auto;
+}
+
+.modal-container button {
+  display: block;
+  width: 100%;
+  max-width: 200px;
+  padding: 10px 15px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.modal-container button:hover {
+  background-color: #0056b3;
+}
+
+.control-group {
+  margin-top: 15px;
+  margin-bottom: 15px;
+}
+
+.modal-buttons {
+  display: flex;
+  justify-content: center;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.modal-button {
+  width: 100%;
+  max-width: 200px;
+  padding: 10px 15px;
+  font-size: 16px;
+  background-color: #007bff;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  text-align: center;
+}
+
+.modal-button:hover {
+  background-color: #0056b3;
 }
 
 /* Spinner overlay */

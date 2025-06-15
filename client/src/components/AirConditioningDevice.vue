@@ -1,5 +1,5 @@
 <template>
-  <div class="toggle-container" style="position: relative;">
+  <div class="toggle-container">
     <!-- Spinner overlay -->
     <div v-if="isLoading" class="blocker-overlay">
       <div class="spinner"></div>
@@ -55,7 +55,7 @@
             </select>
           </div>
 
-          <button @click="applySettings">Aplicar</button>
+          <button class="btn-apply" @click="applySettings">Aplicar</button>
           <button @click="showModal = false">Cerrar</button>
         </div>
       </div>
@@ -320,6 +320,14 @@ input:checked + .slider:before {
 
 .control-group {
   margin-bottom: 15px;
+}
+
+.modal-container .btn-apply {
+  background-color: #28a745 !important;
+}
+
+.modal-container .btn-apply:hover {
+  background-color: #218838 !important;
 }
 
 /* Spinner overlay */

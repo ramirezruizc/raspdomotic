@@ -101,7 +101,9 @@ export const useSessionStore = defineStore('session', {
       this.isLoading = status;
     },
 
-    // Simulación de carga
+    //Simulación de carga de 3s si se decide que alguna
+    //operación necesita simular un estado de stand-by
+    //para mejorar la experiencia de usuario final
     simulateLoading() {
       this.setLoading(true);
       setTimeout(() => {

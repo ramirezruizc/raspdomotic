@@ -9,6 +9,7 @@ import api from '../api/api'; // Para las peticiones al servidor
 //View para pruebas aisladas
 //import Pruebas from '../views/PruebasView.vue';
 
+//Definicion de posibles rutas para la aplicacion
 const routes = [
   { path: '/', component: AuthForm }, // Ruta de inicio: Muestra el formulario de login/registro
   { path: '/login', component: AuthForm }, // Ruta de login
@@ -29,7 +30,7 @@ const router = createRouter({
   routes,
 });
 
-// Protección de rutas: Redirigir al login si no hay token
+// Protección de rutas: se intercepta cada solicitud y se redirige al login si no hay token válido
 router.beforeEach(async (to, from, next) => {
   if (to.meta.requiresAuth)
     //&& !localStorage.getItem('token')) 

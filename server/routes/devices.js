@@ -37,7 +37,7 @@ module.exports = (mqttClient, io) => {
     // Ruta para obtener el estado de la bombilla
     router.get('/get-bulb', authMiddleware, async (req, res) => {
         try {
-            const response = await axios.get(`${NODE_RED_URL}/get-bulb`);
+            const response = await axios.get(`${NODE_RED_URL}/devices/get-bulb`);
 
             console.log("Respuesta GET de Bulb (NODE-Red):", response.data);
 
@@ -51,6 +51,40 @@ module.exports = (mqttClient, io) => {
 
             console.log("Respuesta GET de Bulb HSBColor (MQTT):", hsbColor);
             res.json({ estado: response.data.estado, hsbColor: { h, s, b } });
+        } catch (error) {
+            console.error('Error al obtener el estado de la bombilla:', error);
+            res.status(500).json({ message: 'Error en el servidor' });
+        }
+    });
+
+    // Ruta para obtener el estado de la bombilla
+    router.get('/:deviceId/bulbRGB/status', authMiddleware, async (req, res) => {
+        try {
+            const { deviceId } = req.params;
+            const device = getDeviceById(deviceId);
+
+            if (!device) return res.status(404).json({ message: "Dispositivo no encontrado" });
+
+            /*
+            const response = await axios.get(`${NODE_RED_URL}/devices/get-bulb`);
+
+            console.log("Respuesta GET de Bulb (NODE-Red):", response.data);
+            */
+
+            const params = await mqttClient.subscribePublishAndWaitForResponse(
+                device.topics.state, //comando para obtener los parámetros
+                device.topics.result //topic donde se recibe la informacion
+            );
+
+            console.log(`Status de ${device.name} params: ${params}`);
+
+            const power = params.POWER || "OFF";
+
+            const hsbColor = params.HSBColor || '0,0,0';
+            const [h, s, b] = hsbColor.split(',').map(Number);
+
+            console.log("Respuesta GET de Bulb HSBColor (MQTT):", hsbColor);
+            res.json({ power: power, hsbColor: { h, s, b } });
         } catch (error) {
             console.error('Error al obtener el estado de la bombilla:', error);
             res.status(500).json({ message: 'Error en el servidor' });
@@ -97,7 +131,7 @@ module.exports = (mqttClient, io) => {
 
         try 
         {
-            const response = await axios.post(`${NODE_RED_URL}/set-bulb`, { estado });
+            const response = await axios.post(`${NODE_RED_URL}/devices/set-bulb`, { estado });
 
             console.log("Respuesta POST de Bulb (NODE-Red):", estado);
 
@@ -128,6 +162,75 @@ module.exports = (mqttClient, io) => {
         }
     });
 
+    // Ruta para encender/apagar la bombilla
+    router.post('/:deviceId/bulbRGB/toggle', authMiddleware, async (req, res) => {
+        const { deviceId } = req.params;
+        const { power } = req.body;
+        //const { power, hsbColor } = req.body;
+
+        const device = getDeviceById(deviceId);
+        if (!device) return res.status(404).json({ success: false, message: "Dispositivo no encontrado" });
+
+        const comandos = [];
+
+        if (power === "OFF") {
+            comandos.push("Power OFF");
+        } else {
+            comandos.push("Power ON");
+
+            /*
+            if (hsbColor && typeof hsbColor.h === 'number') {
+            const { h, s, b } = hsbColor;
+            comandos.push(`HSBColor ${h},${s},${b}`);
+            }
+            */
+        }
+
+        const command = `Backlog ${comandos.join("; ")}`;
+        const commandTopic = device.topics.backlog;
+        const responseTopic = device.topics.result;
+
+        try {
+            /*
+            const response = await axios.post(`${NODE_RED_URL}/devices/set-bulb`, { estado });
+
+            if (!response.data.success) {
+                return res.status(400).json({ success: false, message: response.data.error || "Error desconocido en Node-RED" });
+            }
+            */
+           
+            const io = req.app.get("io");
+            if (!io) {
+                console.error("❌ io no está disponible en req.app");
+                return res.status(500).json({ message: "Error interno del servidor" });
+            }
+
+            //mqttClient.publishMessage(topic, command);
+            const response = await mqttClient.subscribePublishAndWaitForResponse(
+                commandTopic,
+                responseTopic,
+                command,
+                3000
+            );
+
+            const success = response?.POWER?.toUpperCase() === power.toUpperCase();
+
+            if (!success) {
+                console.warn("⚠️ El dispositivo no respondió como se esperaba:", response);
+                return res.status(408).json({ success: false, message: "Sin respuesta válida del dispositivo" });
+            }
+
+            const bulbState = power.toUpperCase() === "ON";
+
+            io.emit("bulb-status", { deviceId, state: bulbState });
+
+            return res.json({ success: true, message: `Bombilla ${deviceId} actualizada a ${bulbState}` });
+        } catch (err) {
+            console.error("❌ Error en toggle-bulb dinámico:", err);
+            res.status(500).json({ message: "Error al comunicarse con Node-RED" });
+        }
+    });
+
     // Ruta para establecer brillo y color y, por tanto, encender la bombilla RGB
     router.post('/set-bulb-bright-color', authMiddleware, async (req, res) => {
         const { hsbColor } = req.body;
@@ -145,7 +248,7 @@ module.exports = (mqttClient, io) => {
 
             const estado = "ON";
 
-            const response = await axios.post(`${NODE_RED_URL}/set-bulb`, { estado });
+            const response = await axios.post(`${NODE_RED_URL}/devices/set-bulb`, { estado });
 
             // Verificar si la respuesta de Node-RED contiene `success: true`
             if (response.data.success) {
@@ -162,6 +265,50 @@ module.exports = (mqttClient, io) => {
             } else {
                 return res.status(400).json({ success: false, message: response.data.error || "Error desconocido en Node-RED" });
             }
+        } catch (error) {
+        console.error("❌ Error al enviar color:", error);
+        res.status(500).json({ success: false, message: 'Error en el servidor' });
+        }
+    });
+
+    // Ruta para establecer brillo y color y, por tanto, encender la bombilla RGB
+    router.post('/:deviceId/bulbRGB/set-color', authMiddleware, async (req, res) => {
+        const { deviceId } = req.params;
+        const { hsbColor } = req.body;
+
+        const device = getDeviceById(deviceId);
+        if (!device) return res.status(404).json({ success: false, message: "Dispositivo no encontrado" });
+
+
+        if (!hsbColor || typeof hsbColor.h !== 'number' || typeof hsbColor.s !== 'number' || typeof hsbColor.b !== 'number') {
+            return res.status(400).json({ success: false, message: 'HSB inválido' });
+        }
+    
+        const payload = `${hsbColor.h},${hsbColor.s},${hsbColor.b}`;
+        const topic = device.topics.hsbColor;
+    
+        try {
+            mqttClient.publishMessage(topic, payload);
+
+            console.log(`🎨 Cambiando color/brillo de bombilla: ${payload}`);
+
+            //const response = await axios.post(`${NODE_RED_URL}/devices/set-bulb`, { estado });
+
+            // Verificar si la respuesta de Node-RED contiene `success: true`
+            //if (response.data.success) {
+                const io = req.app.get("io");
+
+                if (!io) {
+                    console.error("❌ io no está disponible en req.app");
+                    return res.status(500).json({ message: "Error interno del servidor" });
+                }
+
+                io.emit("bulb-status", { deviceId, state: true });
+
+                return res.json({ success: true, message: `Color de bombilla ${deviceId} actualizado a ${payload}` });
+            /*} else {
+                return res.status(400).json({ success: false, message: response.data.error || "Error desconocido en Node-RED" });
+            }*/
         } catch (error) {
         console.error("❌ Error al enviar color:", error);
         res.status(500).json({ success: false, message: 'Error en el servidor' });
@@ -188,7 +335,7 @@ module.exports = (mqttClient, io) => {
                 res.json({ relayStatus: relayStatus, isOnline });
             } else {
                 // Fallback de emergencia (opcional): intentar usar getMqttRetainedValue con cliente temporal
-                // o devolver error si prefieres forzar una espera de mensaje real
+                // o devolver error si se prefiere forzar una espera de mensaje "real"
                 return res.status(503).json({ success: false, message: "Estado del relé no disponible aún" });
             }
         } catch (error) {
@@ -214,26 +361,27 @@ module.exports = (mqttClient, io) => {
         }
     });
 
-    router.get("/:id/switch", authMiddleware, async (req, res) => {
-        const { id } = req.params;
-        console.log("ID de dispositivo:", id);
+    // Ruta para la consulta del estado del Switch
+    router.get("/:deviceId/switch/status", authMiddleware, async (req, res) => {
+        const { deviceId } = req.params;
+        console.log("ID de dispositivo:", deviceId);
 
         try {
-            const device = getDeviceById(id);
+            const device = getDeviceById(deviceId);
             console.log("Device:", device);
             
             if (!device) {
                 return res.status(404).json({ message: "Dispositivo no encontrado" });
             }
 
-            const { isOnline, relay } = getDeviceState(id);
+            const { isOnline, relay } = getDeviceState(deviceId);
             console.log("Online?:", isOnline);
             console.log("Encendido?:", relay);
 
             if (typeof relay === "boolean") {
                 return res.json({
                     success: true,
-                    deviceId: id,
+                    deviceId: deviceId,
                     relayStatus: relay,
                     isOnline: !!isOnline,
                 });
@@ -249,53 +397,24 @@ module.exports = (mqttClient, io) => {
         }
     });
 
-    router.post("/:id/switch/toggle", authMiddleware, async (req, res) => {
-        const { id } = req.params;
-
-        const device = getDeviceById(id);
-        
-        if (!device) {
-            return res.status(404).json({ success: false, message: "Dispositivo no encontrado" });
-        }
-
-        const current = getDeviceState(id)?.relay;
-
-        if (typeof current !== "boolean") {
-            return res.status(503).json({
-            success: false,
-            message: "Estado del relé no disponible aún",
-            });
-        }
-
-        const newState = !current;
-        const relaySetTopic = device.topics.relaySet;
-
-        /*
-        try {
-            mqttClient.publishMessage(relaySetTopic, newState ? "1" : "0");
-            return res.json({ success: true, newState });
-        } catch (err) {
-            console.error("❌ Error al publicar nuevo estado:", err);
-            return res.status(500).json({ success: false, message: "Error al conmutar relé" });
-        }
-        */
+    // Ruta POST para encender/apagar el Switch   
+    router.post("/:deviceId/switch/toggle", authMiddleware, async (req, res) => {
+        const { deviceId } = req.params;
 
         try {
-            mqttClient.publishMessage(relaySetTopic, newState ? "1" : "0");
-
-            await mqttClient.waitForRelayChange(id, newState); // aquí esperamos que el cambio ocurra
-            return res.json({ success: true, newState });
+            // Esperamos a que se produzca el cambio
+            await mqttClient.waitForRelayChange(deviceId);
+            return res.json({ success: true });
         } catch (err) {
             console.error("❌ Fallo al conmutar o sin respuesta:", err);
             return res.status(500).json({ success: false, message: "El dispositivo no respondió" });
         }
-
     });
 
     // Obtener el estado actual de la alarma desde Node-RED
     router.get('/get-alarma', authMiddleware, async (req, res) => {
         try {
-            const response = await axios.get(`${NODE_RED_URL}/get-alarma`);
+            const response = await axios.get(`${NODE_RED_URL}/devices/get-alarma`);
             res.json({ estado: response.data.estado });
         } catch (error) {
             console.error('Error al obtener el estado de la alarma:', error);
@@ -308,7 +427,7 @@ module.exports = (mqttClient, io) => {
         const { estado } = req.body;
 
         try {
-            const response = await axios.post(`${NODE_RED_URL}/set-alarma`, { estado });
+            const response = await axios.post(`${NODE_RED_URL}/devices/set-alarma`, { estado });
 
             // Verificar si la respuesta de Node-RED contiene `success: true`
             if (response.data.success) {
@@ -343,7 +462,7 @@ module.exports = (mqttClient, io) => {
     router.get('/get-ac', authMiddleware, async (req, res) => {
         try {
             // Primera petición a Node-RED
-            const firstResponse = await axios.get(`${NODE_RED_URL}/get-ac`);
+            const firstResponse = await axios.get(`${NODE_RED_URL}/devices/get-ac`);
             const firstData = firstResponse.data;
 
             console.log("📡 Primera respuesta GET de A/C:", firstData);
@@ -352,7 +471,7 @@ module.exports = (mqttClient, io) => {
             await new Promise(resolve => setTimeout(resolve, 1200)); // ajusta si ves que necesita más
 
             // Segunda petición a Node-RED
-            const secondResponse = await axios.get(`${NODE_RED_URL}/get-ac`);
+            const secondResponse = await axios.get(`${NODE_RED_URL}/devices/get-ac`);
             const secondData = secondResponse.data;
 
             console.log("📡 Segunda respuesta GET de A/C:", secondData);
@@ -390,7 +509,7 @@ module.exports = (mqttClient, io) => {
         */
 
         try {
-            const response = await axios.post(`${NODE_RED_URL}/set-ac`, {
+            const response = await axios.post(`${NODE_RED_URL}/devices/set-ac`, {
                 power,
                 mode,
                 temperature,
@@ -415,7 +534,7 @@ module.exports = (mqttClient, io) => {
 
         if (voiceCommands[command]) {
             const { topic, message } = voiceCommands[command];
-            publishMessage(topic, message);
+            mqttClient.publishMessage(topic, message);
             return res.json({ success: true, message: `✅ Comando ejecutado: ${command}` });
         } else {
             return res.status(400).json({ success: false, message: "❌ Comando no reconocido" });
