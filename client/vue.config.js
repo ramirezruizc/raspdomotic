@@ -14,7 +14,8 @@ module.exports = defineConfig({
       }
     },
     
-    //Para poder operar bien con IP local en entorno de desarrollo
+    //Para poder operar bien con IP local en entorno 
+    //de desarrollo, eliminar comentarios siguientes
     /*
     proxy: {
       '/api/v1': {
