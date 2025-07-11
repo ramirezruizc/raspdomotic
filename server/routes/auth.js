@@ -1,6 +1,8 @@
 const express = require('express');
 const jwt = require('jsonwebtoken');
+const Role = require('../models/Role');
 const User = require('../models/User');
+const Device = require('../models/Device');
 const SystemConfig = require('../models/SystemConfig');
 const { authMiddleware, isAdminMiddleware, isSUserMiddleware } = require('../middleware/auth');
 const logEvent = require('../utils/logEvent');
@@ -25,7 +27,7 @@ router.post('/register', async (req, res) => {
     const role = !hasSuperUser ? ['s-user', 'admin'] : ['user'];
 
     // Verificar estado del sistema
-    const config = await SystemConfig.findOne();
+    const config = await SystemConfig.findOne() || await SystemConfig.create({});
 
     if (!config.allowRegistration && !role.includes('admin')) {
       return res.status(403).json({ message: 'Registro deshabilitado por el administrador.' });
@@ -80,6 +82,10 @@ router.post('/login', async (req, res) => {
       return res.status(403).json({ message: 'Este usuario no puede iniciar sesión.' });
     }
 
+    if (user.blocked) {
+      return res.status(403).json({ message: 'Este usuario ha sido bloqueado por un administrador.' });
+    }
+
     const isMatch = await user.comparePassword(password);
 
     if (!isMatch)
@@ -108,12 +114,17 @@ router.post('/login', async (req, res) => {
     });
 
     // Verificar estado del sistema
-    const config = await SystemConfig.findOne() || await SystemConfig.create({});
+    const config = await SystemConfig.findOne();
 
     if (config.maintenanceMode && !user.role.includes('admin')) {
       return res.status(403).json({
         message: 'El sistema está en mantenimiento. Solo los administradores pueden acceder.'
       });
+    }
+
+    // Limpiamos flag si hubo cierre de sesion remoto por la administracion
+    if (user.invalidated) {
+      user.invalidated = false;
     }
 
     //Generar Token JWT
@@ -236,7 +247,7 @@ router.post('/logout', async (req, res) => {
   res.json({ message: 'Cierre de sesión correcto' });
 });
 
-// Ruta para eliminar la base de datos (solo accesible para admin)
+// Ruta para eliminar la base de datos (solo accesible para s-user)
 router.delete('/nuke-database', authMiddleware, isSUserMiddleware, async (req, res) => {
   const { confirmStep1, confirmStep2 } = req.body;
 
@@ -258,7 +269,7 @@ router.delete('/nuke-database', authMiddleware, isSUserMiddleware, async (req, r
 
 router.get('/users-list', async (req, res) => {
   try {
-    const users = await User.find({}, 'username role isSystem').lean();
+    const users = await User.find({}, 'username role isSystem blocked').lean();
     res.json(users);
   } catch (error) {
     console.error('Error fetching users:', error);
@@ -272,11 +283,20 @@ router.post('/set-role', authMiddleware, isAdminMiddleware, async (req, res) => 
 
   console.log("Usuaio a modificar rol:", req.body);
 
-  if (
+  /*if (
     !Array.isArray(role) ||
     !role.every(r => ['user', 'admin'].includes(r))
   ) {
     return res.status(400).json({ message: 'Rol inválido' });
+  }*/
+
+  if (!Array.isArray(role)) {
+    return res.status(400).json({ message: 'El campo role debe ser un array' });
+  }
+
+  // Evitar asignar roles reservados
+  if (role.includes('s-user') || role.includes('system')) {
+    return res.status(400).json({ message: 'No se pueden asignar roles reservados: s-user, system' });
   }
 
   try {
@@ -286,6 +306,13 @@ router.post('/set-role', authMiddleware, isAdminMiddleware, async (req, res) => 
       { new: true }
     );*/
 
+    // Validar que todos los roles existen en la colección Role
+    const existingRoles = await Role.find({ name: { $in: role } }).lean();
+
+    if (existingRoles.length !== role.length) {
+      return res.status(400).json({ message: 'Uno o más roles no existen en el sistema' });
+    }
+
     const user = await User.findOne({ username });
 
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
@@ -294,10 +321,14 @@ router.post('/set-role', authMiddleware, isAdminMiddleware, async (req, res) => 
       return res.status(403).json({ message: 'No se puede modificar este usuario del sistema' });
     }
 
+    if (!role.includes('user')) {
+      role.push('user');
+    }
+
     user.role = role;
     await user.save();
 
-    res.json({ message: `Rol de ${username} actualizado a ${role}` });
+    res.json({ message: `Rol de ${username} actualizado a ${role.join(', ')}` });
   } catch (error) {
     console.error('Error actualizando rol:', error);
     res.status(500).json({ message: 'Error al actualizar rol' });
@@ -306,16 +337,18 @@ router.post('/set-role', authMiddleware, isAdminMiddleware, async (req, res) => 
 
 // Eliminar un usuario
 router.post('/delete-user', authMiddleware, isAdminMiddleware, async (req, res) => {
-  const { username } = req.body;
+  const { id } = req.body;
 
-  if (!username) {
-    return res.status(400).json({ message: 'Nombre de usuario requerido' });
+  if (!id) {
+    return res.status(400).json({ message: 'Usuario requerido' });
   }
 
   try {
     //const user = await User.findOneAndDelete({ username });
 
-    const user = await User.findOne({ username });
+    console.log("Usuario a borrar", id);
+
+    const user = await User.findById(id);
 
     if (!user) {
       return res.status(404).json({ message: 'Usuario no encontrado' });
@@ -327,16 +360,150 @@ router.post('/delete-user', authMiddleware, isAdminMiddleware, async (req, res) 
 
     await User.deleteOne({ _id: user._id });
 
-    res.json({ message: `Usuario ${username} eliminado correctamente` });
+    res.json({ message: `Usuario ${id} eliminado correctamente` });
   } catch (error) {
     console.error('Error eliminando usuario:', error);
     res.status(500).json({ message: 'Error al eliminar usuario' });
   }
 });
 
-// Ruta protegida (Verifica el token)
+// Invalidar un usuario
+router.post('/invalidate-user', authMiddleware, isAdminMiddleware, async (req, res) => {
+  const { username } = req.body;
+
+  if (!username) {
+    return res.status(400).json({ message: 'Se requiere nombre de usuario' });
+  }
+
+  try {
+    console.log("Sesión cerrada remotamente para usuario:", username);
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    user.invalidated = true;
+    await user.save();
+
+    res.json({ message: `Sesión de ${username} invalidada` });
+  } catch (e) {
+    res.status(500).json({ message: 'Error al invalidar sesión' });
+  }
+});
+
+//Bloquear/desbloquear usuario desde administracion
+router.post('/block-user', authMiddleware, isAdminMiddleware, async (req, res) => {
+  const { username, blocked } = req.body;
+
+  if (!username || typeof blocked !== 'boolean') {
+    return res.status(400).json({ message: 'Parámetros inválidos' });
+  }
+
+  try {
+    console.log("Usuario bloqueado:", username);
+
+    const user = await User.findOne({ username });
+    if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    user.blocked = blocked;
+    await user.save();
+
+    res.json({ message: `Usuario ${username} ${blocked ? 'bloqueado' : 'desbloqueado'}` });
+  } catch (err) {
+    console.error('Error al actualizar bloqueo de usuario:', err);
+    res.status(500).json({ message: 'Error al actualizar bloqueo' });
+  }
+});
+
+router.get('/roles', authMiddleware, isAdminMiddleware, async (req, res) => {
+  try {
+    const roles = await Role.find({});
+    res.json(roles);
+  } catch (err) {
+    console.error('Error obteniendo roles', err);
+    res.status(500).json({ message: 'Error al obtener roles' });
+  }
+});
+
+router.post('/roles', authMiddleware, isAdminMiddleware, async (req, res) => {
+  const { name, description, color } = req.body;
+  if (!name) {
+    return res.status(400).json({ message: 'El nombre del rol es obligatorio' });
+  }
+
+  try {
+    const existing = await Role.findOne({ name });
+    if (existing) {
+      return res.status(400).json({ message: 'El rol ya existe' });
+    }
+
+    const role = new Role({ name, description, color });
+    await role.save();
+    res.status(201).json(role);
+  } catch (err) {
+    console.error('Error creando rol', err);
+    res.status(500).json({ message: 'Error al crear rol' });
+  }
+});
+
+router.patch('/roles/:id', authMiddleware, isAdminMiddleware, async (req, res) => {
+  const { name, description, color } = req.body;
+  try {
+    const updated = await Role.findByIdAndUpdate(
+      req.params.id,
+      { name, description, color },
+      { new: true, runValidators: true }
+    );
+    if (!updated) {
+      return res.status(404).json({ message: 'Rol no encontrado' });
+    }
+    res.json(updated);
+  } catch (err) {
+    console.error('Error actualizando rol', err);
+    res.status(500).json({ message: 'Error al actualizar rol' });
+  }
+});
+
+router.delete('/roles/:id', authMiddleware, isAdminMiddleware, async (req, res) => {
+  try {
+    const role = await Role.findById(req.params.id);
+    if (!role) {
+      return res.status(404).json({ message: 'Rol no encontrado' });
+    }
+
+    if (['admin', 'user', 'system', 's-user'].includes(role.name)) {
+      return res.status(400).json({ message: 'No se puede eliminar un rol reservado del sistema' });
+    }
+
+    // Desvincular de usuarios
+    await User.updateMany(
+      { role: role.name },
+      { $pull: { role: role.name } }
+    );
+
+    // Asegurar que usuarios siempre tengan al menos 'user'
+    await User.updateMany(
+      { role: { $size: 0 } },
+      { $addToSet: { role: 'user' } }
+    );
+
+    // Desvincular de dispositivos
+    await Device.updateMany(
+      { accessRoles: role.name },
+      { $pull: { accessRoles: role.name } }
+    );
+
+    await Role.deleteOne({ _id: req.params.id });
+
+    res.json({ message: 'Rol eliminado y desvinculado correctamente' });
+  } catch (err) {
+    console.error('Error eliminando rol', err);
+    res.status(500).json({ message: 'Error al eliminar rol' });
+  }
+});
+
+// Ruta protegida (Verifica el token con authMiddleware)
 router.get('/protected-route', authMiddleware, (req, res) => {
-  res.json({ message: 'Acceso concedido' });
+  const { username, role } = req.user;
+  res.status(200).json({ username, role });
 });
 
 module.exports = router;

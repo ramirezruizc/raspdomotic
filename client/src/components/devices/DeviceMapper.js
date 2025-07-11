@@ -8,7 +8,7 @@ const componentMap = {};
 
 //Definicion dinamica de componentes en base al nombre del archivo fuente
 components.forEach(name => {
-  componentMap[name] = defineAsyncComponent(() => import(`../components/${name}.vue`));
+  componentMap[name] = defineAsyncComponent(() => import(`./${name}.vue`));
 });
 
 export default componentMap;

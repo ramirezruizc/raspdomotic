@@ -5,6 +5,7 @@ import HomeControl from '../views/HomeControlView.vue'; // View Home Control
 import Dashboard from '../views/DashboardView.vue'; // View Dashboard
 import Configuration from '../views/ConfigurationView.vue'; // View Configuration
 import api from '../api/api'; // Para las peticiones al servidor
+import { routeRoles } from '@/permissions/routeRoles'; //Proteccion por roles
 
 //View para pruebas aisladas
 //import Pruebas from '../views/PruebasView.vue';
@@ -30,23 +31,33 @@ const router = createRouter({
   routes,
 });
 
-// Protección de rutas: se intercepta cada solicitud y se redirige al login si no hay token válido
 router.beforeEach(async (to, from, next) => {
-  if (to.meta.requiresAuth)
-    //&& !localStorage.getItem('token')) 
-  {
-    try{
-      // Aquí estamos enviando una solicitud al servidor para verificar si el token en las cookies es válido.
-      const response = await api.get('/auth/protected-route'); // El token se manda automáticamente con las cookies
-      if (response.status === 200) {
-        //next('/login'); // Si no hay token, redirige al login
-        next();
-    }
+  if (to.meta.requiresAuth) {
+    try {
+      // Validar sesión vía backend (token httpOnly en cookies)
+      const response = await api.get('/auth/protected-route');
+
+      const userRoles = response.data.role || [];
+      const requiredRoles = routeRoles[to.path]; //Si la ruta está restringida
+
+      console.log("userRoles:", userRoles);
+      console.log("requiredRoles:", requiredRoles);
+
+      //Si la ruta tiene restricciones y el usuario no cumple, redirigir
+      if (requiredRoles && !requiredRoles.some(r => userRoles.includes(r))) {
+        console.warn(`⛔ Acceso denegado a ${to.path} para roles:`, userRoles);
+        return next('/login');
+      }
+
+      //Autenticado y con rol adecuado (o ruta sin restricción)
+      next();
     } catch (error) {
-    // Si el token no es válido o ha expirado
-    next('/login'); // Redirige al login
+      // ❌ Token inválido → sesión caducada → login
+      console.warn('⚠️ Token inválido o sesión expirada');
+      next('/login');
     }
   } else {
+    // Ruta pública
     next();
   }
 });

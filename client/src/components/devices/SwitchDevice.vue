@@ -49,9 +49,9 @@
 </template>
 
 <script>
-import api from "../api/api";
+import api from "@/api/api";
 import { io } from "socket.io-client";
-import SchedulePlanner from '../components/SchedulePlanner.vue';
+import SchedulePlanner from '@/components/SchedulePlanner.vue';
 
 export default {
   components: {
@@ -329,6 +329,10 @@ input:checked + .slider:before {
   width: 90%;
   max-height: 90vh;
   overflow-y: auto;
+}
+
+.modal-container h3 {
+  margin-top: 0;
 }
 
 .modal-container button {

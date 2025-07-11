@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const SystemConfig = require('../models/SystemConfig');
 const User = require('../models/User');
+const Role = require('../models/Role');
 const { authMiddleware, isAdminMiddleware } = require('../middleware/auth');
 const logEvent = require('../utils/logEvent');
 const os = require('os');
@@ -20,7 +21,26 @@ router.get('/', async (req, res) => {
   // Verificar si ya existe un usuario "system"
   let systemUser = await User.findOne({ username: 'system' });
 
+  //Si no existe usuario 'system' estamos ante un nuevo despliegue
+  //de la solución. Creamos roles por defecto en el sistema
+  //ademas del usuario inetrno 'system' propio del sistema
   if (!systemUser) {
+    const defaultRoles = [
+      { name: 's-user', description: 'Rol Superusuario' },
+      { name: 'admin', description: 'Rol Administrador del sistema', color: '#ff9800' },
+      { name: 'system', description: 'Rol Usuario interno del sistema' },
+      { name: 'user', description: 'Rol Usuario estándar', color: '#007bff' },
+      { name: 'dashboard', description: 'Rol analítica', color: '#33d1ff' } 
+    ];
+
+    for (const roleData of defaultRoles) {
+      const exists = await Role.findOne({ name: roleData.name });
+      if (!exists) {
+        await Role.create(roleData);
+        console.log(`⚙️ Rol '${roleData.name}' creado`);
+      }
+    }
+
     systemUser = new User({
       username: 'system',
       password: 'unuse', // Campo obligatorio, aunque sin uso para login

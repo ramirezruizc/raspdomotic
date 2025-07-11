@@ -30,6 +30,18 @@ h2 {
   gap: 8px; /* Espacio entre icono y texto */
 }
 
+.no-data-overlay {
+  text-align: center;
+  color: #666;
+  margin-top: 20px;
+}
+
+.info-icon {
+  font-size: 2rem;
+  display: block;
+  margin-bottom: 0.5rem;
+}
+
 .category-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Se adapta automáticamente */
@@ -68,7 +80,7 @@ h2 {
 /* Grid de dispositivos dentro de cada categoría */
 .device-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr)); /* Dispositivos más compactos */
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); /* Dispositivos más compactos */
   gap: 8px;
   width: 100%;
   max-height: calc(100vh - 200px); /* Ajusta según la pantalla disponible */
@@ -119,4 +131,19 @@ h2 {
   .category-grid {
     grid-template-columns: 1fr; /* Se convierte en una sola columna */
   }
+}
+
+.device-container {
+  position: relative;
+  min-width: 140px;
+}
+
+.device-type-icon {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  transform: translate(-30%, -30%);
+  font-size: 1rem;
+  z-index: 10;
+  pointer-events: none;
 }

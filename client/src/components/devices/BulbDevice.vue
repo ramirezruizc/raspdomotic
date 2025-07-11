@@ -51,7 +51,7 @@
 </template>
 
 <script>
-import api from '../api/api';
+import api from '@/api/api';
 import { io } from "socket.io-client";
 
 export default {

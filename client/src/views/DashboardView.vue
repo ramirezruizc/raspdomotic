@@ -253,9 +253,19 @@ export default defineComponent({
       }, 50);
     };
 
-    onMounted(() => {
-      loadUsers();
-      loadEventTypes();
+    onMounted(async () => {
+      sessionStore.setLoading(true);
+
+      try {
+        await Promise.all([
+          loadUsers(),
+          loadEventTypes()
+        ]);
+      } catch (error) {
+        console.error("❌ Error al cargar datos del dashboard:", error);
+      } finally {
+        sessionStore.setLoading(false);
+      }
     });
 
     return {

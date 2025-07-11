@@ -21,17 +21,34 @@
 </template>
 
 <script>
+import { useAuthStore } from '@/store/mainStore';
+import { routeRoles } from '@/permissions/routeRoles';  
+
 export default {
   data() {
     return {
       mostrarMenu: false,
-      opciones: [
+      opcionesBase: [
         { nombre: "Home Control", ruta: "/app" },
         { nombre: "Dashboard", ruta: "/app/dashboard" },
         { nombre: "Configuration", ruta: "/app/configuration" },
       ],
     };
   },
+
+  computed: {
+    opciones() {
+      const authStore = useAuthStore();
+      const userRoles = authStore.role || [];
+
+      return this.opcionesBase.filter(item => {
+        const required = routeRoles[item.ruta];
+        if (!required) return true; // sin restricciones = visible
+        return required.some(r => userRoles.includes(r));
+      });
+    },
+  },
+
   methods: {
     toggleMenu() {
       this.mostrarMenu = !this.mostrarMenu;

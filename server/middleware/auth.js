@@ -23,6 +23,10 @@ const authMiddleware = async (req, res, next) => {
             return res.status(404).json({ message: 'Usuario no encontrado' });
         }
 
+        if (user.invalidated) {
+            return res.status(401).json({ message: 'Sesión expirada. Debe iniciar sesión de nuevo.' });
+        }
+
         // Verificar cuánto tiempo le queda al token
         const tiempoRestante = decoded.exp - Math.floor(Date.now() / 1000);
 
@@ -60,6 +64,7 @@ const isSUserMiddleware = (req, res, next) => {
     return res.status(403).json({ message: '⛔ Acción solo permitida para s-user' });
 };
 
+//Sin uso actualmente...
 const authorizeRoles = (...allowedRoles) => {
     return (req, res, next) => {
       if (!allowedRoles.includes(req.user.role)) {

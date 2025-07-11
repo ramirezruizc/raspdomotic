@@ -110,7 +110,7 @@ export const getUsersList = async () => {
   }
 };
 
-// Función para modificar el rol de usuario
+// Función para modificar roles de usuario
 export const updateUserRoles = async (username, role) => {
   try {
     const response = await api.post('/auth/set-role', { username, role });
@@ -122,12 +122,36 @@ export const updateUserRoles = async (username, role) => {
 };
 
 // Función para borrar usuario
-export const deleteUser = async (username) => {
+export const deleteUser = async (id) => {
   try {
-    const response = await api.post('/auth/delete-user', { username });
+    const response = await api.post('/auth/delete-user', { id });
     return response.data;
   } catch (error) {
     console.error('Error al eliminar el usuario', error);
     throw error;
   }
 };
+
+export function getRoles() {
+  return api.get('/auth/roles').then(res => res.data);
+}
+
+export function createRole(role) {
+  return api.post('/auth/roles', role).then(res => res.data);
+}
+
+export function updateRole(id, role) {
+  return api.patch(`/auth/roles/${id}`, role).then(res => res.data);
+}
+
+export function removeRole(id) {
+  return api.delete(`/auth/roles/${id}`).then(res => res.data);
+}
+
+export async function invalidateUser(username) {
+  return await api.post('/auth/invalidate-user', { username });
+}
+
+export async function blockUser(username, block) {
+  return await api.post(`/auth/block-user`, { username, blocked: block });
+}

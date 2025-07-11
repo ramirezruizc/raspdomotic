@@ -16,7 +16,8 @@ module.exports = defineConfig({
     
     //Para poder operar bien con IP local en entorno 
     //de desarrollo, eliminar comentarios siguientes
-    /*
+    
+    
     proxy: {
       '/api/v1': {
         target: 'http://192.168.1.4:7000', // IP del backend en la Raspberry Pi
@@ -31,7 +32,7 @@ module.exports = defineConfig({
         ws: true
       }
     }
-    */
+    
     
   },
   pwa: {

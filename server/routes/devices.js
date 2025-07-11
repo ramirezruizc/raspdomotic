@@ -2,9 +2,11 @@ const express = require('express');
 //const { publishAndWaitForResponse, publishMessage, getMqttRetainedValue } = require('../utils/mqttClient'); // Importa el cliente MQTT
 const router = express.Router();
 const axios = require('axios');
-const { authMiddleware } = require('../middleware/auth'); // Importa el middleware
+const { authMiddleware, isAdminMiddleware } = require('../middleware/auth'); // Importa el middleware
 //const { io } = require('../index'); // Importamos io para emitir eventos
 const { getDeviceById, getDeviceState } = require('../services/device/deviceRegistry');
+const Device = require('../models/Device');
+const { loadDevicesFromNodeRed } = require('../services/device/deviceLoader');
 
 const NODE_RED_URL = process.env.NODE_RED_URL;
 
@@ -23,13 +25,47 @@ const voiceCommands = {
 };
 
 module.exports = (mqttClient, io) => {
-    // Ruta para obtener los dispositivos del sistema
+    // Ruta para obtener los dispositivos del sistema en funcion del RBAC
     router.get('/get-devices', authMiddleware, async (req, res) => {
         try {
             const response = await axios.get(`${NODE_RED_URL}/config/devices`);
-            res.json({ success: response.data.success, devices: response.data.devices });
+            const nodeDevices = response.data.devices;
+
+            const dbDevices = await Device.find({}, { _id: 0, id: 1, restricted: 1, accessRoles: 1 }).lean();
+            const dbMap = Object.fromEntries(dbDevices.map(d => [d.id, d]));
+
+            const userRoles = Array.isArray(req.user.role) ? req.user.role : (req.user.role ? [req.user.role] : []);
+
+            // Si el usuario es admin, devolvemos todos los dispositivos sin filtrar
+            if (userRoles.includes('admin')) {
+            return res.json({
+                success: true,
+                devices: nodeDevices
+            });
+            }
+
+            // Filtramos dispositivos para usuarios no admin
+            const filteredDevices = nodeDevices.filter(nd => {
+                const dbEntry = dbMap[nd.id];
+
+                if (!dbEntry) {
+                    return false;  // Si no hay entry en BBDD, el dispositivo está restringido
+                }
+
+                if (!dbEntry.restricted) {
+                    return true;  // Si no está restringido, lo ve cualquiera
+                }
+
+                // Si está restringido, comprobamos los roles
+                return dbEntry.accessRoles.some(role => userRoles.includes(role));
+            });
+
+            res.json({
+            success: true,
+            devices: filteredDevices
+            });
         } catch (error) {
-            console.error('Error al obtener el listado de dispositivos configurados:', error);
+            console.error('❌ Error al obtener el listado de dispositivos configurados:', error);
             res.status(500).json({ message: 'Error en el servidor' });
         }
     });
@@ -457,7 +493,7 @@ module.exports = (mqttClient, io) => {
     // Obtener estado del aire acondicionado
     // Un problema conocido para MELCloud es
     // que su plataforma no sincroniza bien
-    // y necesita de segunda comprobación
+    // y necesita de varias comprobaciones
     // para asegurar el estado del dispositivo
     router.get('/get-ac', authMiddleware, async (req, res) => {
         try {
@@ -476,7 +512,7 @@ module.exports = (mqttClient, io) => {
 
             console.log("📡 Segunda respuesta GET de A/C:", secondData);
 
-            // Comparación superficial o profunda, según lo que definas como relevante
+            // Comparación superficial o profunda, según lo que se defina como relevante
             const fieldsToCompare = ['power', 'mode', 'temperature', 'fanspeed'];
 
             const areEqual = fieldsToCompare.every(field =>
@@ -522,6 +558,70 @@ module.exports = (mqttClient, io) => {
         } catch (error) {
             console.error("❌ Error al actualizar AC:", error);
             return res.status(500).json({ success: false, message: "Error al comunicarse con Node-RED" });
+        }
+    });
+
+    // Obtener los dispositivos registrados en BBDD con sus accessRoles
+    router.get('/get-device-access', authMiddleware, isAdminMiddleware, async (req, res) => {
+        try {
+            const devices = await Device.find({}, { _id: 0, id: 1, name: 1, type: 1, restricted: 1, accessRoles: 1 }).lean();
+            
+            res.json({
+                success: true,
+                devices
+            });
+        } catch (err) {
+            console.error('❌ Error al obtener acceso de dispositivos:', err);
+            res.status(500).json({ message: 'Error al obtener acceso de dispositivos' });
+        }
+    });
+
+
+    // Cambiar restricciones de acceso de un dispositivo
+    router.patch('/:deviceId/access-control', authMiddleware, isAdminMiddleware, async (req, res) => {
+        try {
+            const { deviceId } = req.params;
+            const { accessRoles, name, restricted } = req.body;
+
+            if (!Array.isArray(accessRoles)) {
+                return res.status(400).json({ message: "El campo accessRoles debe ser un array" });
+            }
+
+            let device = await Device.findOne({ id: deviceId });
+
+            if (device) {
+                device.restricted = !!restricted;
+                device.accessRoles = accessRoles;
+                await device.save();
+                return res.json({ success: true, message: "Acceso actualizado", device });
+            } else {
+                if (!name) {
+                    return res.status(400).json({ message: "Falta el nombre del dispositivo para crear el registro" });
+                }
+
+                device = await Device.create({
+                    id: deviceId,
+                    name,
+                    accessRoles,
+                    restricted
+                });
+
+                return res.json({ success: true, message: "Dispositivo creado y acceso asignado", device });
+            }
+
+        } catch (err) {
+            console.error("❌ Error en access-control:", err);
+            res.status(500).json({ message: "Error al procesar la solicitud" });
+        }
+    });
+
+    router.post('/load-from-nodered', authMiddleware, isAdminMiddleware, async (req, res) => {
+        try {
+            await loadDevicesFromNodeRed();
+            res.json({ success: true, message: 'Dispositivos recargados desde Node-RED' });
+        } catch (err) {
+            console.error('❌ Error en load-from-nodered:', err);
+            res.status(500).json({ message: 'Error al recargar dispositivos desde Node-RED' });
         }
     });
 

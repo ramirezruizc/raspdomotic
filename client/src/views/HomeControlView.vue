@@ -3,49 +3,55 @@
     <h1>🧙🏼‍♂️ Home Control</h1>
 
     <!-- Contenedor de categorías draggable -->
-    <div class="categories-container">
-      <draggable v-model="groupedDevices" item-key="category" group="categories" @end="saveOrder"
-        handle=".drag-handle" class="category-grid">
-        <template #item="{ element: category }">
-          <div class="device-category-container">
-            <h2>
-              <span class="drag-handle"><i class="pi pi-ellipsis-v"></i></span>
-              {{ category.category }}
-            </h2>
+    <div v-if="groupedDevices.length > 0">
+      <div class="categories-container">
+        <draggable v-model="groupedDevices" item-key="category" group="categories" @end="saveOrder"
+          handle=".drag-handle" class="category-grid">
+          <template #item="{ element: category }">
+            <div class="device-category-container">
+              <h2>
+                <span class="drag-handle"><i class="pi pi-ellipsis-v"></i></span>
+                {{ category.category }}
+              </h2>
 
-            <!-- Contenedor de dispositivos draggable -->
-            <draggable v-model="category.devices" item-key="id" group="devices" @end="saveOrder"
-              handle=".drag-handle" class="device-grid" :forceFallback="true" :fallbackOnBody="true"
-              :move="checkMove">
-              <template #item="{ element: device }">
-                <div class="device-container">
-                  <span class="drag-handle"><i class="pi pi-ellipsis-v"></i></span>
-                  <div class="device-content">
-                    <component
-                      :is="getComponent(device.type)"
-                      v-if="getComponent(device.type)"
-                      :key="device.id"
-                      :deviceId="device.deviceId"
-                      :deviceName="device.deviceName"
-                      />
+              <!-- Contenedor de dispositivos draggable -->
+              <draggable v-model="category.devices" item-key="id" group="devices" @end="saveOrder"
+                handle=".drag-handle" class="device-grid" :forceFallback="true" :fallbackOnBody="true"
+                :move="checkMove">
+                <template #item="{ element: device }">
+                  <div class="device-container">
+                    <div class="device-type-icon">
+                      <i :class="getIcon(device.type)"></i>
+                    </div>
+                    <span class="drag-handle"><i class="pi pi-ellipsis-v"></i></span>
+                    <div class="device-content">
+                      <component
+                        :is="getComponent(device.type)"
+                        v-if="getComponent(device.type)"
+                        :key="device.id"
+                        :deviceId="device.deviceId"
+                        :deviceName="device.deviceName"
+                        />
+                    </div>
                   </div>
-                </div>
-              </template>
-            </draggable>
-          </div>
-        </template>
-      </draggable>
+                </template>
+              </draggable>
+            </div>
+          </template>
+        </draggable>
+      </div>
     </div>
-  </div>
-  <div v-else>
-    <p></p>
+    <div v-else class="no-data-overlay">
+      <span class="info-icon">ℹ️</span>
+      <p>No hay dispositivos disponibles para su usuario.</p>
+    </div>
   </div>
 </template>
 
 <script>
 import { getLayout, saveLayout } from '../api/auth';
 import { getDevices } from '../api/devices';
-import componentMap from '../components/DeviceMapper';
+import componentMap from '../components/devices/DeviceMapper';
 import draggable from 'vuedraggable';
 import { useSessionStore } from '../store/mainStore';
 
@@ -172,6 +178,17 @@ export default {
 
     getComponent(tipo) {
       return componentMap[tipo] || null;
+    },
+
+    getIcon(type) {
+      switch (type) {
+        case 'BulbRGBDevice': return 'pi pi-lightbulb';
+        case 'SwitchDevice': return 'pi pi-power-off';
+        case 'AirConditioningDevice': return 'pi pi-sun';
+        case 'AlarmDevice': return 'pi pi-bell';
+        case 'CameraDevice': return 'pi pi-camera';
+        default: return '';
+      }
     },
 
     checkMove(event) {

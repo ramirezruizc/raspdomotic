@@ -23,7 +23,21 @@
 
         <button class="config-button" @click="showModal = true" :disabled="isLoading">⚙️</button>
       </div>
+
+      <!-- Visualización de temperaturas -->
+      <div class="temperature-display">
+        <span class="mode-icon">
+          {{ mode === 'heat' ? '☀️' : mode === 'cooling' ? '❄️' : '' }}
+        </span>
+        <span class="temp-room" v-if="roomTemperature !== undefined">
+          {{ roomTemperature }}
+        </span>
+        <span class="temp-target">
+          → {{ temperature.toFixed(1) }}°C
+        </span>
+      </div>
       
+      <!-- estado ON/OFF -->
       <span class="toggle-state">{{ acPower ? "ON" : "OFF" }}</span>
     </div>
 
@@ -35,7 +49,7 @@
 
           <div class="control-group">
             <label>Temperatura: {{ temperature }}°C</label>
-            <input type="range" min="16" max="30" v-model.number="temperature" @input="setTemperature" />
+            <input type="range" min="16" max="30" step="0.5" v-model.number="temperature" @input="setTemperature" />
           </div>
 
           <div class="control-group">
@@ -64,7 +78,7 @@
 </template>
 
 <script>
-import api from '../api/api';
+import api from '@/api/api';
 
 export default {
   data() {
@@ -75,7 +89,8 @@ export default {
       showModal: false,
       temperature: 24,
       mode: "heat",
-      fanSpeed: 1
+      fanSpeed: 1,
+      roomTemperature: null
     };
   },
   async mounted() {
@@ -148,6 +163,7 @@ export default {
           this.temperature = data.temperature;
           this.mode = modeMap[data.mode];
           this.fanSpeed = data.fanspeed;
+          this.roomTemperature = data.roomTemperature;
           this.hasError = false;
         }
         else
@@ -203,6 +219,7 @@ export default {
   display: flex;
   flex-direction: column;
   align-items: center;
+  gap: 4px;
 }
 
 .toggle-row {
@@ -300,6 +317,10 @@ input:checked + .slider:before {
   overflow-y: auto;
 }
 
+.modal-container h3 {
+  margin-top: 0;
+}
+
 .modal-container button {
   display: block;
   margin: 20px auto 0 auto;
@@ -370,5 +391,23 @@ input:checked + .slider:before {
 .retry-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+.temperature-display {
+  font-size: 0.75rem;
+  display: flex;
+  gap: 6px;
+  align-items: baseline;
+  justify-content: center;
+}
+
+.temp-room {
+  color: #004080; /* Azul oscuro */
+  font-weight: 600;
+}
+
+.temp-target {
+  color: #e67e22; /* Naranja */
+  font-weight: 600;
 }
 </style>
