@@ -12,16 +12,16 @@ const NODE_RED_URL = process.env.NODE_RED_URL;
 
 // Mapeo de comandos de voz a tópicos y mensajes MQTT
 const voiceCommands = {
-    "llamar emergencias": { topic: "recovoz/llamada_emergencia", message: "true" },
-    "desconectar alarma": { topic: "recovoz/desconectar_alarma", message: "false" },
-    "conectar alarma": { topic: "recovoz/conectar_alarma", message: "true" },
-    "encender salon frio": { topic: "recovoz/encender_salon1_frio", message: "000000FF00" },
-    "encender salon": { topic: "recovoz/encender_salon1", message: "ON" },
-    "apagar salon": { topic: "recovoz/apagar_salon1", message: "OFF" },
-    "salon al 25%": { topic: "recovoz/salon1_X%", message: "25" },
-    "salon al 50%": { topic: "recovoz/salon1_X%", message: "50" },
-    "salon al 75%": { topic: "recovoz/salon1_X%", message: "75" },
-    "salon al 100%": { topic: "recovoz/salon1_X%", message: "100" }
+    "llamar emergencias": { topic: "recovoz/llamada_emergencia", message: "true", deviceId: "ALARM_DEVICE" },
+    "desconectar alarma": { topic: "recovoz/desconectar_alarma", message: "false", deviceId: "ALARM_DEVICE" },
+    "conectar alarma": { topic: "recovoz/conectar_alarma", message: "true", deviceId: "ALARM_DEVICE" },
+    "encender salon frio": { topic: "recovoz/encender_salon1_frio", message: "000000FF00", deviceId: "TASMOTA_BULBRGB1" },
+    "encender salon": { topic: "recovoz/encender_salon1", message: "ON", deviceId: "TASMOTA_BULBRGB1" },
+    "apagar salon": { topic: "recovoz/apagar_salon1", message: "OFF", deviceId: "TASMOTA_BULBRGB1" },
+    "salon al 25%": { topic: "recovoz/salon1_X%", message: "25", deviceId: "TASMOTA_BULBRGB1" },
+    "salon al 50%": { topic: "recovoz/salon1_X%", message: "50", deviceId: "TASMOTA_BULBRGB1" },
+    "salon al 75%": { topic: "recovoz/salon1_X%", message: "75", deviceId: "TASMOTA_BULBRGB1" },
+    "salon al 100%": { topic: "recovoz/salon1_X%", message: "100", deviceId: "TASMOTA_BULBRGB1" }
 };
 
 module.exports = (mqttClient, io) => {
@@ -626,18 +626,52 @@ module.exports = (mqttClient, io) => {
     });
 
     // Ruta para procesar comandos de voz
-    router.post('/command', authMiddleware, (req, res) => {
+    router.post('/command', authMiddleware, async(req, res) => {
         //const command = removeAccents(req.body.command.toLowerCase());
 
         //Comando ya normalizado desde cliente
         const command = req.body.command;
 
-        if (voiceCommands[command]) {
-            const { topic, message } = voiceCommands[command];
+        if (!voiceCommands[command]) {
+            return res.status(400).json({ success: false, message: "❌ Comando no reconocido" });
+        }
+
+        const { topic, message, deviceId } = voiceCommands[command];
+        const userRoles = Array.isArray(req.user.role) ? req.user.role : [req.user.role];
+
+        // Si es admin, acceso total
+        if (userRoles.includes('admin')) {
             mqttClient.publishMessage(topic, message);
             return res.json({ success: true, message: `✅ Comando ejecutado: ${command}` });
-        } else {
-            return res.status(400).json({ success: false, message: "❌ Comando no reconocido" });
+        }
+
+        try {
+            const device = await Device.findOne({ id: deviceId });
+
+            // Si no existe en BBDD, asumimos que está restringido
+            if (!device) {
+            return res.status(403).json({ success: false, message: "⛔ Dispositivo no autorizado" });
+            }
+
+            // Si no está restringido, puede usarlo cualquiera
+            if (!device.restricted) {
+            mqttClient.publishMessage(topic, message);
+            return res.json({ success: true, message: `✅ Comando ejecutado: ${command}` });
+            }
+
+            // Si está restringido, comprobamos que tenga alguno de los roles
+            const hasAccess = device.accessRoles.some(role => userRoles.includes(role));
+
+            if (!hasAccess) {
+            return res.status(403).json({ success: false, message: "⛔ No tienes permiso para usar este dispositivo" });
+            }
+
+            mqttClient.publishMessage(topic, message);
+            return res.json({ success: true, message: `✅ Comando ejecutado: ${command}` });
+
+        } catch (error) {
+            console.error("❌ Error en comando por voz:", error);
+            res.status(500).json({ success: false, message: "Error en el servidor" });
         }
     });
 

@@ -38,8 +38,16 @@
     </div>
 
     <!-- Mensaje de comando ejecutado -->
-    <div v-if="showCommandMessage" class="command-message">
-      ✅ Comando ejecutado: {{ commandMessage }}
+    <div
+      v-if="showCommandMessage"
+      class="command-message"
+      :class="{
+        success: commandStatus === 'success',
+        error: commandStatus === 'error',
+        warning: commandStatus === 'warning'
+      }"
+    >
+      {{ commandMessage }}  
     </div>
   </div>
 </template>
@@ -104,21 +112,45 @@ export default {
 
         try {
           const response = await api.post("/devices/command", { command: this.command });
+
           if (!response.data.success) {
             throw new Error(response.data.message || "Error desconocido");
           }
+
           console.log("✅ Comando enviado con éxito");
 
-          // Mostrar mensaje flotante
-          this.commandMessage = this.command;
+          this.commandMessage = response.data.message;
           this.showCommandMessage = true;
-          setTimeout(() => {
-            this.showCommandMessage = false;
-            this.commandMessage = '';
-          }, 3000); // Desaparece a los 3 segundos
         } catch (error) {
           console.error("❌ Error al enviar el comando:", error);
+
+          const status = error.response?.status;
+          const message = error.response?.data?.message || error.message || "Error desconocido";
+
+          this.commandMessage = message;
+
+          if (status === 400) {
+            this.commandStatus = 'error';
+          } else if (status === 403) {
+            this.commandStatus = 'warning';
+          } else {
+            this.commandStatus = 'error';
+          }
         }
+
+        // Cancelar timeout anterior si existe
+        if (this.messageTimeout) {
+          clearTimeout(this.messageTimeout);
+        }
+        
+        //Mostrar mensaje flotante y establecer timeout del mismo
+        this.showCommandMessage = true;
+        this.messageTimeout = setTimeout(() => {
+          this.showCommandMessage = false;
+          this.commandMessage = '';
+          this.commandStatus = '';
+          this.messageTimeout = null;
+        }, 3000);
 
         this.stopRecognition();
       };
@@ -305,5 +337,18 @@ button {
   10%  { opacity: 1; transform: translateX(-50%) translateY(0); }
   90%  { opacity: 1; transform: translateX(-50%) translateY(0); }
   100% { opacity: 0; transform: translateX(-50%) translateY(-20px); }
+}
+
+.command-message.success {
+  background: #28a745;
+}
+
+.command-message.error {
+  background: #dc3545;
+}
+
+.command-message.warning {
+  background: #ffc107;
+  color: black;
 }
 </style>
