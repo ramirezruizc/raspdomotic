@@ -13,7 +13,7 @@
       <span v-if="authStore.user" class="user-name">
         ¡Hola! <strong>{{ authStore.user }}</strong>
       </span>
-      <a href="#" @click.prevent="authStore.logout" class="logout-link">Salir</a>
+      <a href="#" @click.prevent="sessionStore.logout" class="logout-link">Salir</a>
     </div>
 
     <transition name="fade" mode="out-in">
@@ -40,11 +40,11 @@
     </div>
 
     <!-- Overlay de logout -->
-    <div v-if="authStore.logoutLoading" class="overlay">
+    <div v-if="sessionStore.logoutLoading" class="overlay">
       <div class="loading-container">
-        <div v-if="authStore.logoutStatus === 'loading'" class="spinner"></div>
-        <div v-if="authStore.logoutStatus === 'success'" class="status-icon success">✓</div>
-        <p>{{ authStore.logoutMessage }}</p>
+        <div v-if="sessionStore.logoutStatus === 'loading'" class="spinner"></div>
+        <div v-if="sessionStore.logoutStatus === 'success'" class="status-icon success">✓</div>
+        <p>{{ sessionStore.logoutMessage }}</p>
       </div>
     </div>
   </div>
@@ -73,6 +73,7 @@ export default {
       try {
         await authStore.hydrateFromServer(); // Intentamos obtener el usuario desde el backend
         sessionStore.resetSessionTimer();    // Sólo si se autenticó bien
+        sessionStore.connectSocket();
       } catch (error) {
         console.warn("No se pudo hidratar la sesión:", error);
         router.push("/login");
@@ -91,14 +92,14 @@ export default {
   methods: {
     async logout() {
       //Logout centralizado desde mainSotre.js
-      await this.authStore.logout();
+      await this.sessionStore.logout();
     }
   },
 
   watch: {
     // Observamos los cambios en showWarning para renovar la sesión
     "sessionStore.showWarning"(newValue) {
-      if (!newValue && !this.authStore.logoutLoading) {
+      if (!newValue && !this.sessionStore.logoutLoading) {
         this.sessionStore.keepSessionAlive();
       }
     }

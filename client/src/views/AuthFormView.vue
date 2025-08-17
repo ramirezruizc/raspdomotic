@@ -24,9 +24,31 @@
       <input type="text" id="username" v-model="formData.username" required />
 
       <label for="password"><strong>Contraseña:</strong></label>
-      <input type="password" id="password" v-model="formData.password" required />
+      <!-- <input type="password" id="password" v-model="formData.password" required /> -->
 
-      <button type="submit">
+      <div class="input-wrapper">
+        <input
+          :type="showPassword ? 'text' : 'password'"
+          id="password"
+          v-model="formData.password"
+          @focus="passwordFocused = true"
+          @blur="passwordFocused = false"
+          required
+      />
+        <span class="toggle-password" @click="showPassword = !showPassword">
+          <i :class="showPassword ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+        </span>
+      </div>
+
+      <!-- Requisitos compactos, solo en registro y con foco -->
+      <ul
+        v-if="isRegistration && passwordFocused && passwordHints.length"
+        class="password-hints"
+      >
+        <li v-for="(hint, i) in passwordHints" :key="i">{{ hint }}</li>
+      </ul>
+
+      <button type="submit" :disabled="isSubmitDisabled">
         {{ initialSetup ? 'Registrar administrador' : (isLogin ? 'Iniciar Sesión' : 'Registrar') }}
       </button>
     </form>
@@ -82,9 +104,37 @@ export default {
       statusMessage: 'Validando...',
       allowRegistration: false,
       maintenanceMode: false,
-      initialSetup: false
+      initialSetup: false,
+      passwordFocused: false,
+      showPassword: false
     };
   },
+
+  computed: {
+    isRegistration() {
+      return !this.isLogin;
+    },
+
+    passwordHints() {
+      if (!this.isRegistration) return [];
+      const p = this.formData.password || '';
+      const hints = [];
+      if (p.length < 3) hints.push('Mínimo 3 caracteres.');
+      if (!/[a-z]/.test(p)) hints.push('Debe tener una minúscula.');
+      if (!/[A-Z]/.test(p)) hints.push('Debe tener una mayúscula.');
+      if (!/[0-9]/.test(p)) hints.push('Debe tener un número.');
+      return hints;
+    },
+
+    isPasswordValid() {
+      return this.passwordHints.length === 0;
+    },
+
+    isSubmitDisabled() {
+      return this.isRegistration && !this.isPasswordValid;
+    }
+  },
+
   methods: {
     ...mapActions(useAuthStore, ['setUser']),
 
@@ -99,6 +149,13 @@ export default {
       this.statusMessage = 'Validando...';
 
       try {
+        if (this.isRegistration && !this.isPasswordValid) {
+          this.status = 'error';
+          this.statusMessage = '❌ La contraseña no cumple los requisitos';
+          this.loading = false;
+          return;
+        }
+        
         const response = this.isLogin
           ? await login(this.formData)
           : await register(this.formData);

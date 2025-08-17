@@ -15,6 +15,11 @@
         >
           <span class="user-name"
           :class="{ 'blocked-user': user.blocked }">
+            <!-- Conectado -->
+            <span v-if="connectedIds.includes(user._id)" class="status-dot online" title="Conectado"></span>
+
+            <!-- Bloqueado -->
+            <i v-if="user.blocked" class="pi pi-ban blocked-icon" title="Bloqueado"></i>
             <strong>{{ user.username }}</strong>
           </span>
           <div class="user-roles">
@@ -36,6 +41,27 @@
           />
         </li>
       </ul>
+
+      <div class="modal-buttons">
+        <button class="modal-button btn-success" @click="refreshUserList">
+          <i class="pi pi-refresh"></i>
+          usuarios
+        </button>
+
+        <button class="modal-button logout-btn" @click="logoutAllUsers">
+          <i class="pi pi-sign-out"></i>
+          Todos
+        </button>
+
+        <button
+          class="modal-button"
+          :class="allBlocked ? 'btn-success' : 'block-btn'"
+          @click="toggleBlockAllUsers"
+        >
+          <i :class="['pi', allBlocked ? 'pi-lock-open' : 'pi-ban']"></i>
+          Todos
+        </button>
+      </div>
     </div>
 
     <!-- Modal de configuración -->
@@ -47,10 +73,25 @@
             <div class="spinner"></div>
           </div>
           
-          <h3>👤 Usuario:
-            <strong :class="{ 'blocked-user': selectedUser?.blocked }">
-              {{ selectedUser?.username }}
-            </strong>
+          <h3 class="user-header">
+            👤 Usuario:
+            <span class="user-identity">
+              <strong :class="{ 'blocked-user': selectedUser?.blocked }">
+                {{ selectedUser?.username }}
+              </strong>
+
+              <span
+                v-if="connectedIds.includes(selectedUser?._id)"
+                class="status-dot online"
+                title="Conectado"
+              ></span>
+
+              <i
+                v-if="selectedUser?.blocked"
+                class="pi pi-ban blocked-icon"
+                title="Bloqueado"
+              ></i>
+            </span>
           </h3>
 
           <div class="drag-container">
@@ -136,20 +177,27 @@
 import Button from 'primevue/button';
 import { ref, onMounted, computed } from 'vue';
 import { useAuthStore } from '@/store/mainStore';
-import { getUsersList, getRoles, updateUserRoles, deleteUser, invalidateUser, blockUser } from '@/api/auth';
+import { getUsersList, getRoles, updateUserRoles, deleteUser, invalidateUser, blockUser, blockAll, getConnectedUsers } from '@/api/auth';
 import draggable from 'vuedraggable';
+import { logoutAll } from '@/api/auth';
 
 const users = ref([]);
 const allRoles = ref([]);
 const userModalVisible = ref(false);
 const selectedUser = ref(null);
 const isLoading = ref(true);
+const connectedIds = ref([]); // IDs de usuarios conectados por WebSocket
 
 const authStore = useAuthStore();
 //const sessionStore = useSessionStore();
 
 const isSelf = computed(() => {
   return selectedUser.value?.username === authStore.user;
+});
+
+const allBlocked = computed(() => {
+  const evaluables = users.value.filter(user => user.username !== authStore.user);
+  return evaluables.length > 0 && evaluables.every(user => user.blocked);
 });
 
 const filteredRoles = computed(() =>
@@ -181,7 +229,13 @@ function closeModal() {
 
 async function fetchUsers() {
   try {
-    const fetched = await getUsersList();
+    const [fetched, connected] = await Promise.all([
+      getUsersList(),
+      getConnectedUsers()
+    ]);
+
+    connectedIds.value = connected;
+
     users.value = fetched
       .filter(user => !user.isSystem && !(user.role || []).includes('s-user'))
       .map(user => ({
@@ -200,6 +254,20 @@ async function fetchRoles() {
     allRoles.value = await getRoles();
   } catch (e) {
     console.error('Error al obtener roles', e);
+  }
+}
+
+async function refreshUserList() {
+  isLoading.value = true;
+  try {
+    await Promise.all([
+      fetchUsers(),
+      fetchRoles()
+    ]);
+  } catch (e) {
+    console.error("❌ Error actualizando usuarios:", e);
+  } finally {
+    isLoading.value = false;
   }
 }
 
@@ -249,9 +317,9 @@ async function confirmDeleteUser(id) {
   try {
     isLoading.value = true;
     await deleteUser(id);
+    alert(`Usuario borrado correctamente`);
     await fetchUsers();
     isLoading.value = false;
-    closeModal();
   } catch (error) {
     console.error('Error eliminando usuario:', error);
     alert('No se pudo eliminar el usuario: ' + (error.response?.data?.message || error.message));
@@ -263,12 +331,19 @@ async function invalidateSession() {
 
   try {
     isLoading.value = true;
+
     await invalidateUser(selectedUser.value.username);
     alert(`Sesión de ${selectedUser.value.username} invalidada`);
+    closeModal();
   } catch (e) {
     console.error('Error al invalidar sesión', e);
     alert('No se pudo invalidar la sesión');
   } finally {
+    await Promise.all([
+      fetchUsers(),
+      //getConnectedUsers().then(ids => connectedIds.value = ids)
+    ]);
+
     isLoading.value = false;
   }
 }
@@ -282,12 +357,53 @@ async function toggleBlockUser() {
   try {
     isLoading.value = true;
     await blockUser(selectedUser.value.username, !selectedUser.value.blocked);
+    alert(`Usuario ${selectedUser.value.username}. Acción: ${action}. Hecho!`);
     await fetchUsers();
     selectedUser.value.blocked = !selectedUser.value.blocked;
+    closeModal();
   } catch (err) {
     console.error(`Error al ${action} usuario`, err);
     alert(`No se pudo ${action} al usuario`);
   } finally {
+    isLoading.value = false;
+  }
+}
+
+async function toggleBlockAllUsers() {
+  const action = allBlocked.value ? 'desbloquear' : 'bloquear';
+
+  if (!confirm(`¿Deseas ${action} a todos los usuarios?`)) return;
+
+  try {
+    isLoading.value = true;
+    await blockAll(!allBlocked.value);
+    alert(`Usuarios ${action}os correctamente.`);
+  } catch (err) {
+    console.error(`Error al ${action} usuarios:`, err);
+    alert(`No se pudo ${action} a todos los usuarios`);
+  } finally {
+    await fetchUsers();
+    isLoading.value = false;
+  }
+}
+
+async function logoutAllUsers() {
+  if (!confirm("¿Cerrar sesión de todos los usuarios?")) return;
+
+  try {
+    isLoading.value = true;
+
+    await logoutAll();
+    alert("Todos los usuarios han sido expulsados");
+  } catch (err) {
+    console.error("Error en logout-all", err);
+    alert("No se pudo cerrar la sesión de todos los usuarios");
+  } finally {
+    await Promise.all([
+      fetchUsers(),
+      //getConnectedUsers().then(ids => connectedIds.value = ids)
+    ]);
+
     isLoading.value = false;
   }
 }
@@ -306,6 +422,9 @@ onMounted(async () => {
     isLoading.value = false;
   }
 });
+
+// eslint-disable-next-line
+defineExpose({ refreshUserList });
 </script>
 
 <style scoped>
@@ -350,6 +469,14 @@ onMounted(async () => {
 
 .modal-button:hover {
   background-color: #0056b3;
+}
+
+.modal-button.btn-success {
+  background-color: #28a745;
+}
+
+.modal-button.btn-success:hover {
+  background-color: #218838;
 }
 
 .modal-button:disabled,
@@ -429,6 +556,42 @@ onMounted(async () => {
 
 .blocked-user {
   color: #c0392b; /* rojo oscuro */
+}
+
+.user-header {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  gap: 0.5rem;
+}
+
+.user-identity {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-left: 0.5rem;
+}
+
+.status-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+
+.status-dot.online {
+  background-color: #28a745;
+  box-shadow: 0 0 3px #28a745;
+}
+
+.blocked-icon {
+  color: #d32f2f;
+  font-size: 0.9rem;
+  margin-right: 6px;
+  vertical-align: middle;
 }
 
 .user-roles {

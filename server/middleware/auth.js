@@ -1,11 +1,6 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 
-// Función para generar un nuevo token válido durante 5 minutos
-const generateToken = (user) => {
-    return jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '5m' });
-};
-
 // Middleware de autenticación con token deslizante
 const authMiddleware = async (req, res, next) => {
     const token = req.cookies.token;
@@ -32,13 +27,32 @@ const authMiddleware = async (req, res, next) => {
 
         // Si quedan menos de 60 segundos para expirar, renovar el token
         if (tiempoRestante < 60) {
-            console.log("Se renueva el token del usuario:", user.username);
-            const newToken = generateToken(user);
+            console.log("🟢 Se renueva el token del usuario:", user.username);
+
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            const sessionId = decoded.sessionId || crypto.randomUUID();
+
+            const newToken = jwt.sign(
+            {
+                id: user._id,
+                username: user.username,
+                role: user.role,
+                sessionId
+            },
+            process.env.JWT_SECRET,
+            { expiresIn: '5m' }
+            );
 
             user.tokens = { token: newToken };
             await user.save();
 
             res.cookie("token", newToken, { httpOnly: true, sameSite: 'Strict' });
+
+            //En los casos en los que se renueva el token, utilizamos un flag
+            //de modo que en cliente sepamos que debemos renovar times de sesion
+            //const newDecoded = jwt.decode(newToken);
+            //res.set('x-token-exp', String(newDecoded.exp * 1000));
+            res.set('x-token-renewed', 'true');
         }
 
         req.user = user;

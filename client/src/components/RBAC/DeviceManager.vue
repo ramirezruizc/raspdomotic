@@ -16,7 +16,7 @@
             class="restriction-icon"
             :title="device.restricted ? 'Acceso restringido' : 'Acceso libre'"
           >
-            {{ device.restricted ? '🔐' : '🟢' }}
+          <i :class="['pi', device.restricted ? 'pi-lock' : 'pi-lock-open']"></i>
           </span>
           <span class="device-name">{{ device.name }}</span>
           <div class="device-roles">
@@ -34,7 +34,8 @@
       </ul>
 
       <button class="modal-button btn-success" @click="handleRefresh">
-        🔄 Refresh desde Node-RED
+        <i class="pi pi-refresh"></i>
+        Refresh desde Node-RED
       </button>
     </div>
 

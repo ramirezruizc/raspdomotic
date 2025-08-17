@@ -27,10 +27,19 @@ const api = axios.create({
 api.interceptors.response.use(
   response => {
     // ¿¿ Comprobar si res.status == 200 ??
-    const sessionStore = useSessionStore();
+    //const sessionStore = useSessionStore();
     
     // Reiniciar temporizador en cada operación protegida
-    sessionStore.resetSessionTimer();
+    //sessionStore.resetSessionTimer();
+
+    const renewedHeader = response.headers['x-token-renewed'];
+    
+    if (renewedHeader) {
+      //Solo cuando el backend RENUEVA el token,
+      //reset de timers de sesion de usuario
+      const sessionStore = useSessionStore();
+      sessionStore.resetSessionTimer();
+    }
 
     return response;
   },

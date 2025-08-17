@@ -1,139 +1,187 @@
 /* Formulario */
 form {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
-    max-width: 320px;
-    width: 100%;
-    margin: 0 auto;
-    padding: 20px;
-    box-sizing: border-box;
-  }
-  
-  .info-message {
-    background-color: #fff3cd;
-    color: #856404;
-    border: 1px solid #ffeeba;
-    padding: 10px;
-    border-radius: 6px;
-    margin: 10px 0;
-    font-size: 0.95rem;
-  }
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-width: 320px;
+  width: 100%;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
 
-  .info-message.warning {
-    color: #d97706;
-    font-weight: bold;
-  }
+/* Input con icono de ojo */
+.input-wrapper {
+  position: relative;
+  width: 100%;
+}
 
-  input,
-  button {
-    width: 100%;
-    padding: 10px;
-    font-size: 16px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-    box-sizing: border-box;
-  }
+.input-wrapper input {
+  width: 100%;
+  height: 40px;
+  padding: 8px 40px 8px 10px; /* espacio para el ojo */
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+
+/* Ojo dentro y centrado */
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  cursor: pointer;
+  color: #555;
+  font-size: 1.2rem;
+}
+
+/* Lista de requisitos compacta */
+.password-hints {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  text-align: left;
+}
+.password-hints li {
+  color: red;
+  font-size: 0.75rem;
+  margin: 0;
+}
+
+/* Botón deshabilitado visualmente */
+button:disabled {
+  background-color: #c9c9c9 !important;
+  color: #6b6b6b !important;
+  cursor: not-allowed !important;
+  border: 1px solid #bfbfbf !important;
+}
   
-  button {
-    background-color: #007bff;
-    color: white;
-    border: none;
-    cursor: pointer;
+.info-message {
+  background-color: #fff3cd;
+  color: #856404;
+  border: 1px solid #ffeeba;
+  padding: 10px;
+  border-radius: 6px;
+  margin: 10px 0;
+  font-size: 0.95rem;
+}
+
+.info-message.warning {
+  color: #d97706;
+  font-weight: bold;
+}
+
+input,
+button {
+  width: 100%;
+  padding: 10px;
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box;
+}
+
+button {
+  background-color: #007bff;
+  color: white;
+  border: none;
+  cursor: pointer;
+}
+
+button:hover {
+  background-color: #0056b3;
+}
+
+/* Contenedor del logo */
+.logo-container {
+  display: flex;
+  justify-content: center;
+  margin-top: 60px;
+  /*margin-bottom: 20px*/;
+}
+
+/* Estilo del logo */
+.logo {
+  max-width: 100%;
+  height: auto;
+  max-height: 150px;
+}
+
+/* PANTALLA DE CARGA SUPERPUESTA */
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.6);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+
+/* Contenedor del spinner e iconos */
+.loading-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  background: white;
+  padding: 20px;
+  border-radius: 15px;
+  box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+/* Spinner animado */
+.spinner {
+  width: 50px;
+  height: 50px;
+  border: 5px solid rgba(0, 0, 0, 0.1);
+  border-top-color: #007bff;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+  margin-bottom: 10px;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
   }
-  
-  button:hover {
-    background-color: #0056b3;
-  }
-  
-  /* Contenedor del logo */
-  .logo-container {
-    display: flex;
-    justify-content: center;
-    margin-top: 60px;
-    /*margin-bottom: 20px*/;
-  }
-  
-  /* Estilo del logo */
-  .logo {
-    max-width: 100%;
-    height: auto;
-    max-height: 150px;
-  }
-  
-  /* PANTALLA DE CARGA SUPERPUESTA */
-  .overlay {
-    position: fixed;
-    top: 0;
-    left: 0;
-    width: 100%;
-    height: 100%;
-    background: rgba(0, 0, 0, 0.6);
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    z-index: 1000;
-  }
-  
-  /* Contenedor del spinner e iconos */
-  .loading-container {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    background: white;
-    padding: 20px;
-    border-radius: 15px;
-    box-shadow: 0 0 10px rgba(255, 255, 255, 0.5);
-    text-align: center;
-  }
-  
-  /* Spinner animado */
-  .spinner {
-    width: 50px;
-    height: 50px;
-    border: 5px solid rgba(0, 0, 0, 0.1);
-    border-top-color: #007bff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 10px;
-  }
-  
-  @keyframes spin {
-    to {
-      transform: rotate(360deg);
-    }
-  }
-  
-  /* Iconos de estado */
-  .status-icon {
-    font-size: 50px;
-    margin-bottom: 10px;
-  }
-  
-  .success {
-    color: green !important;
-  }
-  
-  .error {
-    color: red !important;
-  }
-  
-  .footer {
-    display: flex;
-    justify-content: center; /* Centra el contenido horizontalmente */
-    align-items: center; /* Alinea verticalmente el texto y la imagen */
-    gap: 8px; /* Espaciado entre el texto y la imagen */
-    padding-bottom: 20px;
-    font-size: 14px;
-    text-align: center;
-  }
-  
-  .footer-logo {
-    height: 30px; /* Ajusta el tamaño del logo según necesidad */
-    width: auto;
-    vertical-align: middle; /* Alinea verticalmente con el texto */
-  }
-  
-  .footer strong {
-    font-weight: bold;
-  }
+}
+
+/* Iconos de estado */
+.status-icon {
+  font-size: 50px;
+  margin-bottom: 10px;
+}
+
+.success {
+  color: green !important;
+}
+
+.error {
+  color: red !important;
+}
+
+.footer {
+  display: flex;
+  justify-content: center; /* Centra el contenido horizontalmente */
+  align-items: center; /* Alinea verticalmente el texto y la imagen */
+  gap: 8px; /* Espaciado entre el texto y la imagen */
+  padding-bottom: 20px;
+  font-size: 14px;
+  text-align: center;
+}
+
+.footer-logo {
+  height: 30px; /* Ajusta el tamaño del logo según necesidad */
+  width: auto;
+  vertical-align: middle; /* Alinea verticalmente con el texto */
+}
+
+.footer strong {
+  font-weight: bold;
+}

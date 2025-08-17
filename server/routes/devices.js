@@ -2,11 +2,13 @@ const express = require('express');
 //const { publishAndWaitForResponse, publishMessage, getMqttRetainedValue } = require('../utils/mqttClient'); // Importa el cliente MQTT
 const router = express.Router();
 const axios = require('axios');
-const { authMiddleware, isAdminMiddleware } = require('../middleware/auth'); // Importa el middleware
+const { authMiddleware, isAdminMiddleware, isSUserMiddleware } = require('../middleware/auth'); // Importa el middleware
 //const { io } = require('../index'); // Importamos io para emitir eventos
 const { getDeviceById, getDeviceState } = require('../services/device/deviceRegistry');
 const Device = require('../models/Device');
 const { loadDevicesFromNodeRed } = require('../services/device/deviceLoader');
+const { forceLogout } = require('../services/webSocket/socketIoManager');
+const { addCrono, removeCrono } = require('../services/crono/cronoExecutor');
 
 const NODE_RED_URL = process.env.NODE_RED_URL;
 
@@ -67,6 +69,22 @@ module.exports = (mqttClient, io) => {
         } catch (error) {
             console.error('❌ Error al obtener el listado de dispositivos configurados:', error);
             res.status(500).json({ message: 'Error en el servidor' });
+        }
+    });
+
+    // Obtener números de telefono configurados en Node-RED para llamadas automaticas
+    router.get('/get-phone-numbers', authMiddleware, isSUserMiddleware, async (req, res) => {
+        try {
+            const response = await axios.get(`${NODE_RED_URL}/config/phones`);
+            const numbers = response.data.devices;
+
+            res.json({
+            success: true,
+            numbers: numbers || []
+            });
+        } catch (error) {
+            console.error('❌ Error al obtener números de teléfonos desde Node-RED:', error.message);
+            res.status(500).json({ success: false, message: 'Error al obtener números' });
         }
     });
 
@@ -203,6 +221,7 @@ module.exports = (mqttClient, io) => {
         const { deviceId } = req.params;
         const { power } = req.body;
         //const { power, hsbColor } = req.body;
+        const { fromCrono = false, duration = null, isCustom = false } = req.body;
 
         const device = getDeviceById(deviceId);
         if (!device) return res.status(404).json({ success: false, message: "Dispositivo no encontrado" });
@@ -253,17 +272,42 @@ module.exports = (mqttClient, io) => {
 
             if (!success) {
                 console.warn("⚠️ El dispositivo no respondió como se esperaba:", response);
+
+                if (fromCrono) {
+                    return res.json({
+                        success: true,
+                        message: "Crono finalizado pero el dispositivo no respondió"
+                    });
+                }
+
                 return res.status(408).json({ success: false, message: "Sin respuesta válida del dispositivo" });
             }
 
             const bulbState = power.toUpperCase() === "ON";
+
+            // Lógica de cronómetro
+            if (fromCrono && power?.toUpperCase() === "ON" && duration > 0) {
+                await addCrono(deviceId, duration * 60, isCustom);
+            }
+
+            if (power?.toUpperCase() === "OFF") {
+                await removeCrono(deviceId);
+            }
 
             io.emit("bulb-status", { deviceId, state: bulbState });
 
             return res.json({ success: true, message: `Bombilla ${deviceId} actualizada a ${bulbState}` });
         } catch (err) {
             console.error("❌ Error en toggle-bulb dinámico:", err);
-            res.status(500).json({ message: "Error al comunicarse con Node-RED" });
+
+            if (fromCrono) {
+                return res.json({
+                    success: true,
+                    message: "Crono finalizado pero error al apagar la bombilla"
+                });
+            }
+
+            res.status(500).json({ message: "Error al realizar cambio de estado de bombilla" });
         }
     });
 
@@ -436,13 +480,34 @@ module.exports = (mqttClient, io) => {
     // Ruta POST para encender/apagar el Switch   
     router.post("/:deviceId/switch/toggle", authMiddleware, async (req, res) => {
         const { deviceId } = req.params;
+        const { estado, fromCrono = false, duration = null, isCustom = false } = req.body;
+
+        const estadoBoolean = estado === "ON";
 
         try {
             // Esperamos a que se produzca el cambio
             await mqttClient.waitForRelayChange(deviceId);
+
+            if (estadoBoolean && fromCrono && duration) {
+                // Crear crono activo
+                await addCrono(deviceId, duration * 60, isCustom);
+            } else if (!estadoBoolean) {
+                // Eliminar crono SIEMPRE que se apague, venga de crono o no
+                await removeCrono(deviceId);
+            }
+
             return res.json({ success: true });
         } catch (err) {
             console.error("❌ Fallo al conmutar o sin respuesta:", err);
+
+            // Si es desde un crono, damos success igualmente para limpiar visual y BBDD
+            if (fromCrono) {
+                return res.json({
+                    success: true,
+                    message: "Crono finalizado pero el dispositivo no respondió"
+                });
+            }
+
             return res.status(500).json({ success: false, message: "El dispositivo no respondió" });
         }
     });
@@ -467,6 +532,15 @@ module.exports = (mqttClient, io) => {
 
             // Verificar si la respuesta de Node-RED contiene `success: true`
             if (response.data.success) {
+                const io = req.app.get("io");
+
+                if (!io) {
+                    console.error("❌ io no está disponible en req.app");
+                    return res.status(500).json({ message: "Error interno del servidor" });
+                }
+
+                io.emit("alarm-status", { status: estado });
+
                 return res.json({ success: true, message: `Alarma actualizada a ${estado}` });
             } else {
                 return res.status(400).json({ success: false, message: response.data.error || "Error desconocido en Node-RED" });
@@ -588,12 +662,18 @@ module.exports = (mqttClient, io) => {
             }
 
             let device = await Device.findOne({ id: deviceId });
+            let removedRoles = [];
+            let wasRestricted = false;
 
             if (device) {
+                wasRestricted = !!device.restricted;
+
+                const previousRoles = Array.isArray(device.accessRoles) ? device.accessRoles : [];
+                removedRoles = previousRoles.filter(r => !accessRoles.includes(r));
+
                 device.restricted = !!restricted;
                 device.accessRoles = accessRoles;
                 await device.save();
-                return res.json({ success: true, message: "Acceso actualizado", device });
             } else {
                 if (!name) {
                     return res.status(400).json({ message: "Falta el nombre del dispositivo para crear el registro" });
@@ -606,9 +686,40 @@ module.exports = (mqttClient, io) => {
                     restricted
                 });
 
-                return res.json({ success: true, message: "Dispositivo creado y acceso asignado", device });
+                wasRestricted = !restricted;
             }
 
+            if (removedRoles.length > 0) {
+                console.log(`🔁 Dispositivo '${device.name}' actualizado. Roles eliminados:`, removedRoles);
+
+                forceLogout({
+                    includeRoles: removedRoles,
+                    excludeUserId: req.user.id,
+                    reason: `Tu rol ha perdido acceso al dispositivo '${device.name}'`
+                });
+            }
+
+            if (wasRestricted === false && restricted === true) {
+                console.log(`🔒 Dispositivo '${device.name}' ha pasado a modo restringido. Forzando logout global (salvo admin/s-user)...`);
+
+                forceLogout({
+                    excludeRoles: ['admin', 's-user'],
+                    excludeUserId: req.user.id,
+                    reason: `El dispositivo '${device.name}' ahora requiere permisos específicos.`
+                });
+            }
+
+            if (wasRestricted === true && restricted === false) {
+                console.log(`🔓 Dispositivo '${device.name}' ha pasado a modo NO restringido. Forzando logout global (salvo admin/s-user)...`);
+
+                forceLogout({
+                    excludeRoles: ['admin', 's-user'],
+                    excludeUserId: req.user.id,
+                    reason: `El dispositivo '${device.name}' ahora es accesible sin restricciones.`
+                });
+            }
+
+            return res.json({ success: true, message: "Acceso actualizado", device });
         } catch (err) {
             console.error("❌ Error en access-control:", err);
             res.status(500).json({ message: "Error al procesar la solicitud" });
@@ -675,7 +786,7 @@ module.exports = (mqttClient, io) => {
         }
     });
 
-  return router;
+    return router;
 };
 
 /*

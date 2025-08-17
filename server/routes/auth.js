@@ -8,6 +8,11 @@ const { authMiddleware, isAdminMiddleware, isSUserMiddleware } = require('../mid
 const logEvent = require('../utils/logEvent');
 const mongoose = require('mongoose');
 const router = express.Router();
+const { forceLogout, getConnectedUserIds } = require('../services/webSocket/socketIoManager');
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+const os = require('os');
 
 //const { io } = require('../index'); // Importa io para usar WebSocket en rutas
 
@@ -20,7 +25,7 @@ router.post('/register', async (req, res) => {
     if (userExists) return res.status(400).json({ message: 'El usuario ya existe' });
 
     // Verifica si ya existe un s-user del sistema, si no, el registro de
-    // usuario se hará con ese rol, con privilegios especiales (nuke-database)
+    // usuario se hará con ese rol, con privilegios especiales (nuke-database entro otros)
     const hasSuperUser = await User.exists({ role: 's-user' });
 
     // Asignar rol según si es el primer s-user o no
@@ -72,7 +77,7 @@ router.post('/register', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
 
-  console.log("Intento de inicio de sesion de:", username);
+  console.log("👤 Intento de inicio de sesion de:", username);
 
   try {
     const user = await User.findOne({ username });
@@ -127,8 +132,19 @@ router.post('/login', async (req, res) => {
       user.invalidated = false;
     }
 
-    //Generar Token JWT
-    const token = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '5m' });
+    const sessionId = crypto.randomUUID();
+
+    //Generar Token JWT, con validez de 5 minutos 
+    const token = jwt.sign(
+      {
+        id: user._id,
+        username: user.username,
+        role: user.role,
+        sessionId
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: '5m' }
+    );
 
     console.log("Nuevo token generado para:", username);
 
@@ -260,6 +276,23 @@ router.delete('/nuke-database', authMiddleware, isSUserMiddleware, async (req, r
     // Intentamos borrar la base de datos
     await mongoose.connection.db.dropDatabase();
     console.log(`⚠️ Base de datos raspdomotic_db eliminada por el usuario ${req.user.username}`);
+
+    // Path de trabajo local del contenedor Docker de Node-RED
+    const noderedDataPath = path.join(os.homedir(), 'modules/docker/containers/node-red/data');
+    const filesToDelete = [
+      path.join(noderedDataPath, 'system-user.json'),
+      path.join(noderedDataPath, 'phone-numbers.json')
+    ];
+
+    filesToDelete.forEach(filePath => {
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`🧨 Eliminado: ${filePath}`);
+      } else {
+        console.log(`ℹ️ No encontrado: ${filePath}`);
+      }
+    });
+
     res.status(200).json({ message: 'Base de datos eliminada correctamente.' });
   } catch (error) {
     console.error('Error eliminando base de datos:', error);
@@ -328,6 +361,9 @@ router.post('/set-role', authMiddleware, isAdminMiddleware, async (req, res) => 
     user.role = role;
     await user.save();
 
+    // Desconectar si está conectado, por cambio de permisos
+    forceLogout({ targetUserId: user._id.toString() });
+
     res.json({ message: `Rol de ${username} actualizado a ${role.join(', ')}` });
   } catch (error) {
     console.error('Error actualizando rol:', error);
@@ -358,6 +394,10 @@ router.post('/delete-user', authMiddleware, isAdminMiddleware, async (req, res) 
       return res.status(403).json({ message: 'No se puede eliminar este usuario del sistema' });
     }
 
+    //Expulsamos remotamente de su sesion al usuario
+    forceLogout({ targetUserId: id });
+
+    //borramos usuario de la BBDD
     await User.deleteOne({ _id: user._id });
 
     res.json({ message: `Usuario ${id} eliminado correctamente` });
@@ -378,14 +418,50 @@ router.post('/invalidate-user', authMiddleware, isAdminMiddleware, async (req, r
   try {
     console.log("Sesión cerrada remotamente para usuario:", username);
     const user = await User.findOne({ username });
+
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
+
+    if (user.isSystem || (user.role || []).includes('s-user')) {
+      return res.status(403).json({ message: 'No se puede invalidar este usuario del sistema' });
+    }
 
     user.invalidated = true;
     await user.save();
 
+    // Forzar logout en tiempo real
+    forceLogout({ targetUserId: user._id.toString() });
+
     res.json({ message: `Sesión de ${username} invalidada` });
   } catch (e) {
     res.status(500).json({ message: 'Error al invalidar sesión' });
+  }
+});
+
+// Usuarios conectados al sistema
+router.get('/connected-users', authMiddleware, isAdminMiddleware, (req, res) => {
+  try {
+    const connected = getConnectedUserIds(); // Devuelve IDs de usuarios conectados
+    res.json({ connected });
+  } catch (err) {
+    console.error("Error al obtener usuarios conectados:", err);
+    res.status(500).json({ message: "Error interno del servidor" });
+  }
+});
+
+// Logout remoto de todos los usuarios
+router.post('/logout-all', authMiddleware, isAdminMiddleware, async (req, res) => {
+  try {
+    const requesterId = req.user.id; // ID del admin que hace la solicitud
+
+    forceLogout({
+      excludeUserId: requesterId,
+      excludeRoles: ['s-user'],
+    });
+
+    res.json({ message: 'Sesión cerrada para todos los usuarios excepto el actual' });
+  } catch (err) {
+    console.error('Error en logout-all:', err);
+    res.status(500).json({ message: 'Error al cerrar sesiones' });
   }
 });
 
@@ -403,13 +479,59 @@ router.post('/block-user', authMiddleware, isAdminMiddleware, async (req, res) =
     const user = await User.findOne({ username });
     if (!user) return res.status(404).json({ message: 'Usuario no encontrado' });
 
+    if (user.isSystem || (user.role || []).includes('s-user')) {
+      return res.status(403).json({ message: 'No se puede bloquear este usuario del sistema' });
+    }
+
     user.blocked = blocked;
     await user.save();
+
+    if (blocked) {
+      // Si se bloquea, forzar logout inmediato
+          forceLogout({ targetUserId: user._id.toString() });
+    }
 
     res.json({ message: `Usuario ${username} ${blocked ? 'bloqueado' : 'desbloqueado'}` });
   } catch (err) {
     console.error('Error al actualizar bloqueo de usuario:', err);
     res.status(500).json({ message: 'Error al actualizar bloqueo' });
+  }
+});
+
+// Bloquear o desbloquear todos los usuarios del sistema (excepto s-user y system)
+router.post('/block-all', authMiddleware, isAdminMiddleware, async (req, res) => {
+  const block = req.body.block === true;
+
+  try {
+    const result = await User.updateMany(
+      {
+        isSystem: { $ne: true },
+        role: { $not: { $in: ['s-user'] } },
+        _id: { $ne: req.user.id }
+      },
+      { $set: { blocked: block } }
+    );
+
+    // Solo expulsar sesiones si se está bloqueando
+    if (block) {
+      const usersToLogout = await User.find({
+        isSystem: { $ne: true },
+        role: { $not: { $in: ['s-user'] } }
+      }, '_id');
+
+      const ids = usersToLogout.map(u => u._id.toString());
+
+      forceLogout({
+        include: ids,
+        excludeRoles: ['s-user'],
+        excludeUserId: req.user.id
+      });
+    }
+
+    res.json({ message: `Usuarios ${block ? 'bloqueados' : 'desbloqueados'}: ${result.modifiedCount}` });
+  } catch (err) {
+    console.error("❌ Error al bloquear/desbloquear usuarios:", err);
+    res.status(500).json({ message: 'Error en la operación' });
   }
 });
 
@@ -473,11 +595,19 @@ router.delete('/roles/:id', authMiddleware, isAdminMiddleware, async (req, res) 
       return res.status(400).json({ message: 'No se puede eliminar un rol reservado del sistema' });
     }
 
+    // Obtener los usuarios que tienen el rol antes de eliminarlo
+    const affectedUsers = await User.find({ role: role.name }, '_id');
+
     // Desvincular de usuarios
     await User.updateMany(
       { role: role.name },
       { $pull: { role: role.name } }
     );
+
+    //Desconectar usuarios remotamente
+    for (const user of affectedUsers) {
+      forceLogout({ targetUserId: user._id.toString() });
+    }
 
     // Asegurar que usuarios siempre tengan al menos 'user'
     await User.updateMany(

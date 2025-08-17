@@ -11,6 +11,7 @@ const { initWss } = require('./services/webSocket/wssManager');
 const mqttClient = require('./services/mqtt/mqttClient');
 const { loadDevicesFromNodeRed } = require('./services/device/deviceLoader');
 const { initScheduleExecutor } = require('./services/scheduler/schedulerExecutor');
+const { initCronoExecutor } = require('./services/crono/cronoExecutor');
 
 // Importar rutas
 const authRoutes = require('./routes/auth');
@@ -18,6 +19,7 @@ const deviceRoutes = require('./routes/devices');
 const eventRoutes = require('./routes/events');
 const systemConfigRoutes = require('./routes/systemConfig');
 const scheduleRoutes = require('./routes/schedule');
+const cronoRoutes = require('./routes/crono');
 const { log } = require('console');
 
 const app = express();
@@ -81,6 +83,9 @@ async function startServer() {
     // Inicializar planificación
     initScheduleExecutor();
 
+    // Inicializar expiración de cronos
+    initCronoExecutor(io);
+
     //Por el momento, habilito la posibilidad
     //de llamar a io desde cualquier parte de
     //la aplicación para usar io.emit(xx, yy)
@@ -99,6 +104,7 @@ async function startServer() {
     app.use('/api/v1/events', eventRoutes);
     app.use('/api/v1/systemConfig', systemConfigRoutes);
     app.use('/api/v1/schedule', scheduleRoutes);
+    app.use('/api/v1/crono', cronoRoutes);
 
     const PORT = process.env.PORT || 7000;
     server.listen(PORT, '0.0.0.0', () => {
@@ -119,7 +125,7 @@ async function startServer() {
 // Reconectar MongoDB si se pierde conexión
 function reconnectMongo() {
   setTimeout(() => {
-    console.log("🔁 Reintentando conexión a MongoDB...");
+    console.log("🔄 Reintentando conexión a MongoDB...");
     mongoose.connect(process.env.DB_URI, {
       useNewUrlParser: true,
       useUnifiedTopology: true,

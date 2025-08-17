@@ -11,6 +11,16 @@ export const getDevices = async () => {
   }
 };
 
+export const getPhoneNumbers = async () => {
+  try {
+    const res = await api.get('/devices/get-phone-numbers');
+    return res.data.numbers || [];
+  } catch (err) {
+    console.error('❌ Error al obtener números de telefono desde backend:', err);
+    return [];
+  }
+};
+
 export function getDeviceAccess() {
   return api.get('/devices/get-device-access').then(res => res.data);
 }

@@ -2,6 +2,7 @@ const cron = require('node-cron');
 const DeviceSchedule = require('../../models/DeviceSchedule');
 const { getDevices } = require('../../services/device/deviceRegistry');
 const mqttClient = require('../../services/mqtt/mqttClient');
+const { getCrono } = require('../../services/crono/cronoExecutor');
 
 const manualOverrideMap = new Map(); // deviceId -> true (forzar override)
 const lastAutoOnMap = new Map(); // deviceId -> timestamp
@@ -37,6 +38,14 @@ function isOverrideActive(deviceId) {
   return now - ts < 1000 * 60 * 60; // 1 hora
 }
 
+async function isCronoActive(deviceId) {
+  const crono = getCrono(deviceId);
+
+  if (!crono) return false; 
+
+  return Date.now() < crono.endAt;
+}
+
 async function evaluateSchedules() {
     try {
         const now = new Date().toLocaleString('es-ES', {
@@ -57,6 +66,13 @@ async function evaluateSchedules() {
 
         for (const schedule of allSchedules) {
             console.log(`➡️ Evaluando planificación de ${schedule.deviceId}`);
+
+            const cronoActivo = await isCronoActive(schedule.deviceId);
+
+            if (cronoActivo) {
+                console.log(`⏱️ Crono activo para ${schedule.deviceId}, se omite planificación`);
+                continue;
+            }
 
             const device = allDevices.find(d => d.id === schedule.deviceId);
 
@@ -141,7 +157,7 @@ async function evaluateSchedules() {
 
 function initScheduleExecutor() {
     console.log("🧠 Iniciando planificación automática...");
-    cron.schedule('* * * * *', evaluateSchedules);
+    cron.schedule('* * * * *', evaluateSchedules); //Cada minuto
 }
 
 module.exports = {

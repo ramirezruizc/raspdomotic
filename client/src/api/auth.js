@@ -110,6 +110,11 @@ export const getUsersList = async () => {
   }
 };
 
+export async function getConnectedUsers() {
+  const response = await api.get('/auth/connected-users');
+  return response.data.connected; // array de user IDs
+}
+
 // Función para modificar roles de usuario
 export const updateUserRoles = async (username, role) => {
   try {
@@ -154,4 +159,12 @@ export async function invalidateUser(username) {
 
 export async function blockUser(username, block) {
   return await api.post(`/auth/block-user`, { username, blocked: block });
+}
+
+export async function blockAll(block = true) {
+  return await api.post('/auth/block-all', { block });
+}
+
+export async function logoutAll() {
+  return await api.post('/auth/logout-all');
 }

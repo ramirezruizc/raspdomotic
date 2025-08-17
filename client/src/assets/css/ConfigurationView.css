@@ -165,6 +165,76 @@ p {
   overflow: hidden; /* para que no se desborde */
 }
 
+.phone-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.number-entry {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.number-entry input {
+  flex: 1;
+  padding: 0.4rem;
+}
+
+.delete-btn {
+  padding: 4px 8px;
+  border-radius: 4px;
+  border: none;
+  cursor: pointer;
+  background-color: #e53935;
+  color: white;
+}
+
+.phone-actions {
+  display: flex;
+  justify-content: center;
+  gap: 0.5rem;
+  margin-top: 1rem;
+}
+
+.phone-action {
+  padding: 8px 16px;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+  background-color: #007bff;
+  color: white;
+}
+
+.phone-action:hover {
+  background-color: #0056b3;
+}
+
+.phone-action.btn-success {
+  background-color: #28a745;
+}
+
+.phone-action.btn-success:hover {
+  background-color: #218838;
+}
+
+.error-msg {
+  color: red;
+  font-size: 0.9rem;
+}
+
+.save-numbers-btn {
+  margin-top: 1rem;
+  padding: 0.5rem 1rem;
+  background-color: #4caf50;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: bold;
+  cursor: pointer;
+}
+
 .danger-zone {
   border: 2px solid red;
   background-color: #ffe6e6; /* Fondo rojo muy suave */
@@ -241,7 +311,75 @@ p {
   font-size: 1.1rem;
 }
 
-.blocker-overlay {
+/* Wrapper input con icono */
+.input-wrapper {
+  position: relative;
+  width: 100%;
+  margin-top: 15px;
+}
+
+.input-wrapper + .input-wrapper {
+  margin-top: 15px; /* solo entre campos consecutivos */
+}
+
+.input-wrapper input {
+  display: block;
+  width: 100%;
+  height: 40px;
+  padding: 8px 40px 8px 10px; /* hueco para el ojo a la derecha */
+  font-size: 16px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-sizing: border-box;
+  line-height: normal;
+}
+
+/* Icono del ojo dentro del input y centrado vertical */
+.toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);  /* centra perfecto en altura */
+  cursor: pointer;
+  color: #555;
+  font-size: 1.15rem;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  z-index: 1;
+}
+
+.toggle-password i {
+  line-height: 1;
+  display: block;
+}
+
+/* Requisitos compactos */
+.password-hints {
+  margin-bottom: 0.1px;
+  padding: 0px;
+  list-style: none;
+  text-align: left;
+}
+
+.password-hints li {
+  color: red;
+  font-size: 0.75rem;
+  margin-bottom: 0.1px;
+}
+
+/* Botón deshabilitado */
+button:disabled {
+  background-color: #c9c9c9 !important;
+  color: #6b6b6b !important;
+  cursor: not-allowed !important;
+  border: 1px solid #bfbfbf !important;
+}
+
+.section-overlay {
   position: absolute;
   top: 0;
   left: 0;
@@ -255,16 +393,16 @@ p {
   border-radius: 12px;
 }
 
-.spinner {
+.section-spinner {
   width: 24px;
   height: 24px;
   border: 3px solid rgba(0, 0, 0, 0.2);
   border-top: 3px solid #007bff;
   border-radius: 50%;
-  animation: spin 0.8s linear infinite;
+  animation: section-spin 0.8s linear infinite;
 }
 
-@keyframes spin {
+@keyframes section-spin {
   0%   { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
 }

@@ -52,7 +52,7 @@ router.beforeEach(async (to, from, next) => {
       //Autenticado y con rol adecuado (o ruta sin restricción)
       next();
     } catch (error) {
-      // ❌ Token inválido → sesión caducada → login
+      // Token inválido, sesión caducada, redireccion a login
       console.warn('⚠️ Token inválido o sesión expirada');
       next('/login');
     }

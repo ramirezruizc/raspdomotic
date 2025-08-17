@@ -1,0 +1,94 @@
+Date : 2025-08-02 17:47:52
+Directory : /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client
+Total : 44 files,  6149 codes, 242 comments, 1008 blanks, all 7399 lines
+
+Languages
++--------------------+------------+------------+------------+------------+------------+
+| language           | files      | code       | comment    | blank      | total      |
++--------------------+------------+------------+------------+------------+------------+
+| vue                |         19 |      4,691 |         60 |        765 |      5,516 |
+| PostCSS            |          5 |        747 |         62 |        120 |        929 |
+| JavaScript         |         15 |        592 |        119 |        113 |        824 |
+| JSON               |          1 |         56 |          0 |          1 |         57 |
+| HTML               |          1 |         22 |          1 |          1 |         24 |
+| JSON with Comments |          1 |         19 |          0 |          1 |         20 |
+| Markdown           |          1 |         19 |          0 |          6 |         25 |
+| XML                |          1 |          3 |          0 |          1 |          4 |
++--------------------+------------+------------+------------+------------+------------+
+
+Directories
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| path                                                                                                        | files      | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+| .                                                                                                           |         44 |      6,149 |        242 |      1,008 |      7,399 |
+| . (Files)                                                                                                   |          5 |        142 |         24 |         13 |        179 |
+| public                                                                                                      |          2 |         25 |          1 |          2 |         28 |
+| public (Files)                                                                                              |          1 |         22 |          1 |          1 |         24 |
+| public/img                                                                                                  |          1 |          3 |          0 |          1 |          4 |
+| public/img/icons                                                                                            |          1 |          3 |          0 |          1 |          4 |
+| src                                                                                                         |         37 |      5,982 |        217 |        993 |      7,192 |
+| src (Files)                                                                                                 |          4 |        121 |         14 |         24 |        159 |
+| src/api                                                                                                     |          5 |        230 |         47 |         40 |        317 |
+| src/assets                                                                                                  |          5 |        747 |         62 |        120 |        929 |
+| src/assets/css                                                                                              |          5 |        747 |         62 |        120 |        929 |
+| src/components                                                                                              |         13 |      3,653 |         35 |        591 |      4,279 |
+| src/components (Files)                                                                                      |          3 |        562 |          6 |         84 |        652 |
+| src/components/RBAC                                                                                         |          3 |      1,293 |          8 |        211 |      1,512 |
+| src/components/devices                                                                                      |          7 |      1,798 |         21 |        296 |      2,115 |
+| src/permissions                                                                                             |          1 |          3 |          1 |          0 |          4 |
+| src/router                                                                                                  |          1 |         47 |          9 |          9 |         65 |
+| src/store                                                                                                   |          1 |        136 |         12 |         25 |        173 |
+| src/utils                                                                                                   |          1 |         33 |         10 |         10 |         53 |
+| src/views                                                                                                   |          6 |      1,012 |         27 |        174 |      1,213 |
++-------------------------------------------------------------------------------------------------------------+------------+------------+------------+------------+------------+
+
+Files
++-------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| filename                                                                                                    | language           | code       | comment    | blank      | total      |
++-------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/README.md                                        | Markdown           |         19 |          0 |          6 |         25 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/babel.config.js                                  | JavaScript         |          5 |          0 |          1 |          6 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/jsconfig.json                                    | JSON with Comments |         19 |          0 |          1 |         20 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/package.json                                     | JSON               |         56 |          0 |          1 |         57 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/public/img/icons/safari-pinned-tab.svg           | XML                |          3 |          0 |          1 |          4 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/public/index.html                                | HTML               |         22 |          1 |          1 |         24 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/App.vue                                      | vue                |         34 |          0 |          4 |         38 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/api/api.js                                   | JavaScript         |         26 |         32 |          9 |         67 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/api/auth.js                                  | JavaScript         |        138 |         10 |         22 |        170 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/api/devices.js                               | JavaScript         |         34 |          1 |          5 |         40 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/api/events.js                                | JavaScript         |         13 |          2 |          2 |         17 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/api/systemConfig.js                          | JavaScript         |         19 |          2 |          2 |         23 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/assets/css/AuthFormView.css                  | PostCSS            |        115 |          7 |         17 |        139 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/assets/css/ConfigurationView.css             | PostCSS            |        278 |         13 |         49 |        340 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/assets/css/DashboardView.css                 | PostCSS            |        146 |         14 |         23 |        183 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/assets/css/HomeControlView.css               | PostCSS            |        111 |         21 |         17 |        149 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/assets/css/MainView.css                      | PostCSS            |         97 |          7 |         14 |        118 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/BurguerMenu.vue                   | vue                |        113 |          2 |         15 |        130 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/RBAC/DeviceManager.vue            | vue                |        389 |          2 |         58 |        449 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/RBAC/RoleManager.vue              | vue                |        292 |          2 |         52 |        346 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/RBAC/UserManager.vue              | vue                |        612 |          4 |        101 |        717 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/SchedulePlanner.vue               | vue                |        148 |          0 |         20 |        168 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/VoiceControl.vue                  | vue                |        301 |          4 |         49 |        354 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/devices/AirConditioningDevice.vue | vue                |        378 |          5 |         58 |        441 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/devices/AlarmDevice.vue           | vue                |        170 |          2 |         24 |        196 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/devices/BulbDevice.vue            | vue                |        308 |          3 |         57 |        368 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/devices/BulbRGBDevice.vue         | vue                |        434 |          6 |         78 |        518 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/devices/CameraDevice.vue          | vue                |        132 |          0 |         19 |        151 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/devices/DeviceMapper.js           | JavaScript         |          8 |          2 |          4 |         14 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/components/devices/SwitchDevice.vue          | vue                |        368 |          3 |         56 |        427 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/main.js                                      | JavaScript         |         34 |          8 |         11 |         53 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/permissions/routeRoles.js                    | JavaScript         |          3 |          1 |          0 |          4 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/registerServiceWorker.js                     | JavaScript         |         33 |          6 |          4 |         43 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/router/index.js                              | JavaScript         |         47 |          9 |          9 |         65 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/service-worker.js                            | JavaScript         |         20 |          0 |          5 |         25 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/store/mainStore.js                           | JavaScript         |        136 |         12 |         25 |        173 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/utils/normalizeCommand.js                    | JavaScript         |         33 |         10 |         10 |         53 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/views/AuthFormView.vue                       | vue                |        134 |          8 |         24 |        166 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/views/ConfigurationView.vue                  | vue                |        292 |          7 |         57 |        356 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/views/DashboardView.vue                      | vue                |        243 |          7 |         40 |        290 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/views/HomeControlView.vue                    | vue                |        179 |          2 |         30 |        211 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/views/MainView.vue                           | vue                |         93 |          3 |         15 |        111 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/src/views/PruebasView.vue                        | vue                |         71 |          0 |          8 |         79 |
+| /Users/cramirez/mnt/raspi.local/modules/raspdomotic/client/vue.config.js                                    | JavaScript         |         43 |         24 |          4 |         71 |
+| Total                                                                                                       |                    |      6,149 |        242 |      1,008 |      7,399 |
++-------------------------------------------------------------------------------------------------------------+--------------------+------------+------------+------------+------------+

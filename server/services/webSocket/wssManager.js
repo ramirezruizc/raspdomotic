@@ -74,7 +74,7 @@ function initWss(server, io) {
                                 alarmTriggered = true;
                                 break;
                             case "bulb-status":
-                                io.emit("bulb-status", { state: data.state });
+                                io.emit("bulb-status", { data });
                                 break;
                             case "alarm-status":
                                 io.emit("alarm-status", { status: data.status });

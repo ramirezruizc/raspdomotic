@@ -1,6 +1,22 @@
 <template>
-	<div>
-		<button @click="toggleAlarma" :class="alarma ? 'btn-on' : 'btn-off'">
+	<div class="toggle-container">
+		<!-- Spinner overlay -->
+		<div v-if="isLoading" class="blocker-overlay">
+		<div class="spinner"></div>
+		</div>
+
+		<!-- Overlay para error -->
+		<div v-if="hasError" class="blocker-overlay">
+		<button class="retry-button" @click="retryFetch" :disabled="isLoading">
+			<i class="pi pi-refresh" :class="{ 'pi-spin': isLoading }"></i>
+		</button>
+		</div>
+
+		<button
+			@click="toggleAlarma"
+			:class="alarma ? 'btn-on' : 'btn-off'"
+			:disabled="isLoading || hasError"
+		>
 			<i class="pi pi-power-off"></i>
 		</button>
 		<p>Alarma: <strong>{{ alarma ? "ACTIVADA" : "DESACTIVADA" }}</strong></p>
@@ -14,6 +30,8 @@ import { io } from "socket.io-client";
 export default {
 	data() {
 		return {
+			isLoading: true,
+			hasError: false,
 			alarma: false,
 			socket: null,
 		};
@@ -22,21 +40,36 @@ export default {
 		this.socket = io(window.location.origin, { path: "/socket.io", withCredentials: true });
 
 		this.socket.on("alarm-status", (data) => {
-			console.log("🔔 Estado de alarma actualizado:", data);
+			console.log("🔔 Estado de alarma actualizado:", data.status);
 			this.alarma = data.status;
 		});
 
-		try {
-			const response = await api.get('/devices/get-alarma');
-			this.alarma = response.data.estado;
-		} catch (error) {
-			console.error("❌ Error al obtener el estado de la alarma:", error);
-		}
+		this.fetchEstado();
 	},
 	methods: {
+		async fetchEstado() {
+			this.isLoading = true;
+			this.hasError = false;
+
+			try {
+				const response = await api.get('/devices/get-alarma');
+				this.alarma = response.data.estado;
+			} catch (error) {
+				console.error("❌ Error al obtener el estado de la alarma:", error);
+				this.hasError = true;
+			} finally {
+				this.isLoading = false;
+			}
+		},
+
+		retryFetch() {
+			this.fetchEstado();
+		},
+
 		async toggleAlarma() {
 			const estadoPrevio = this.alarma;
 			this.alarma = !this.alarma;
+			this.isLoading = true;
 
 			try {
 				const response = await api.post('/devices/set-alarma', { estado: this.alarma });
@@ -47,6 +80,8 @@ export default {
 			} catch (error) {
 				console.error("❌ Error al cambiar la alarma:", error);
 				this.alarma = estadoPrevio;
+			} finally {
+				this.isLoading = false;
 			}
 		}
 	}
@@ -54,8 +89,17 @@ export default {
 </script>
 
 <style scoped>
+.toggle-container {
+  min-width: auto; /* Evita forzar un ancho mínimo */
+  max-width: 100%; /* Se adapta sin desbordarse */
+  flex-grow: 1;
+  position: relative;
+  padding-top: 5px;
+}
+
 p {
   margin-top: 10px;
+  margin-bottom: 0px;
   font-size: 14px;
   overflow-wrap: break-word; /* Asegura que el texto largo se rompa */
   word-wrap: break-word;
@@ -106,5 +150,47 @@ button:active {
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
+}
+
+/* Spinner overlay */
+.blocker-overlay {
+  position: absolute;
+  top: 0;
+  left: 0;
+  background: rgba(255, 255, 255, 0.85);
+  width: 100%;
+  height: 100%;
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border-radius: 12px;
+}
+
+.spinner {
+  width: 24px;
+  height: 24px;
+  border: 3px solid rgba(0, 0, 0, 0.2);
+  border-top: 3px solid #007bff;
+  border-radius: 50%;
+  animation: spin 0.8s linear infinite;
+}
+
+@keyframes spin {
+  0%   { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.retry-button {
+  background: none;
+  border: none;
+  font-size: 2rem;
+  color: #007bff;
+  cursor: pointer;
+}
+
+.retry-button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 </style>

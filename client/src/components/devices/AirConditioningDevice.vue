@@ -29,11 +29,25 @@
         <span class="mode-icon">
           {{ mode === 'heat' ? '☀️' : mode === 'cooling' ? '❄️' : '' }}
         </span>
-        <span class="temp-room" v-if="roomTemperature !== undefined">
-          {{ roomTemperature }}
+        <span
+          class="temp-room"
+          :class="{
+            'temp-cooling-room': mode === 'cooling',
+            'temp-heat-room': mode === 'heat'
+          }"
+          v-if="roomTemperature !== undefined"
+        >
+          {{ roomTemperature }}°C
         </span>
-        <span class="temp-target">
-          → {{ temperature.toFixed(1) }}°C
+        <span class="temp-arrow">→</span>
+        <span
+          class="temp-target"
+          :class="{
+            'temp-cooling-target': mode === 'cooling',
+            'temp-heat-target': mode === 'heat'
+          }"
+        >
+          {{ temperature.toFixed(1) }}°C
         </span>
       </div>
       
@@ -401,12 +415,25 @@ input:checked + .slider:before {
   justify-content: center;
 }
 
-.temp-room {
-  color: #004080; /* Azul oscuro */
+.temp-arrow {
+  color: inherit;
+  font-weight: bold;
+}
+
+.temp-cooling-room {
+  color: #e67e22; /* Naranja */
+  font-weight: 600;
+}
+.temp-cooling-target {
+  color: #3498db; /* Azul */
   font-weight: 600;
 }
 
-.temp-target {
+.temp-heat-room {
+  color: #3498db; /* Azul */
+  font-weight: 600;
+}
+.temp-heat-target {
   color: #e67e22; /* Naranja */
   font-weight: 600;
 }

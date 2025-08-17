@@ -21,11 +21,19 @@
           <span class="slider"></span>
         </label>
 
-        <button class="config-button" @click="showModal = true" :disabled="hasError || isLoading">⚙️</button>
+        <button class="config-button" @click="openModal" :disabled="hasError || isLoading">⚙️</button>
       </div>
 
       <span class="toggle-state">{{ bulbState ? "ON" : "OFF" }}</span>
     </div>
+
+    <!-- Icono parpadeante crono activo -->
+    <i
+      v-if="crono.active"
+      class="pi pi-clock crono-icon"
+    >
+    </i>
+    <span v-if="crono.active" class="crono-remaining">{{ formatTime(crono.remaining) }}</span>
 
     <!-- Modal de configuración -->
     <teleport to="#modals">
@@ -55,9 +63,13 @@
           <!-- Planificación horaria -->
           <div v-if="activeTab === 'schedule'">
             <SchedulePlanner
+              ref="planner"
               :value="schedule"
+              :deviceId="deviceId"
               @update="schedule = $event"
               @save="saveSchedule"
+              :onActivateCrono="activateCrono"
+              :onDeactivateCrono="deactivateCrono"
             />
           </div>
 
@@ -96,9 +108,25 @@ export default {
       isLoading: true,
       hasError: false,
       activeTab: "config",
-      schedule: { days: [], slots: [], enforceOutsideSlot: false }
+      schedule: { days: [], slots: [], enforceOutsideSlot: false },
+      crono: {
+        active: false,
+        remaining: 0,
+        timer: null
+      }
     };
   },
+
+  watch: {
+    activeTab(newVal) {
+      if (newVal === "schedule") {
+        this.$nextTick(() => {
+          this.$refs.planner?.fetchAndSetRemainingTime(this.deviceId);
+        });
+      }
+    }
+  },
+
   async mounted() {
     this.socket = io(window.location.origin, { path: "/socket.io", withCredentials: true });
 
@@ -117,9 +145,37 @@ export default {
       }
     });
 
+    this.socket.on("crono:update", (data) => {
+      if (data.deviceId !== this.deviceId) return;
+
+      if (!data.active) {
+        this.crono.active = false;
+        this.clearCronoVisual();
+        return;
+      }
+
+      this.crono.active = true;
+      this.setRemainingTime(data.remaining);
+    });
+
     await this.fetchInitialState();
     await this.fetchSchedule();
+    await this.fetchCronoStatus();
   },
+
+  beforeUnmount() {
+    if (this.socket)
+    {
+      this.socket.off('crono:update');
+      this.socket.off('bulb-status');
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
+    this.clearCronoVisual();
+    this.crono.active = false;
+  },
+  
   methods: {
     async fetchInitialState() {
       try {
@@ -153,6 +209,74 @@ export default {
       }
     },
 
+    async fetchCronoStatus() {
+      try {
+        const { data } = await api.get(`/crono/${this.deviceId}/crono`);
+
+        if (!data.active) {
+          this.crono.active = false;
+          this.clearCronoVisual();
+          return;
+        }
+
+        this.crono.active = true;
+        this.setRemainingTime(data.remaining);
+      } catch (err) {
+        console.error("❌ Error al consultar estado inicial de crono:", err);
+        this.crono.active = false;
+        this.clearCronoVisual();
+      }
+    },
+
+    setRemainingTime(seconds) {
+      // Evitar timers duplicados
+      if (this.crono.timer) {
+        clearInterval(this.crono.timer);
+        this.crono.timer = null;
+      }
+
+      this.crono.remaining = seconds;
+
+      // Inicia temporizador visual
+      this.crono.timer = setInterval(async () => {
+        if (this.crono.remaining > 0) {
+          this.crono.remaining--;
+        } else {
+          // Llegó a 0
+          try {
+            const { data } = await api.get(`/crono/${this.deviceId}/crono`);
+
+            if (!data.active) {
+              this.clearCronoVisual();
+              this.crono.active = false;
+              return;
+            }
+            // Sigue activo, reprogramar
+            this.setRemainingTime(data.remaining);
+
+          } catch (err) {
+            console.error("❌ Error verificando estado de crono:", err);
+            this.clearCronoVisual();
+            this.crono.active = false;
+          }
+        }
+      }, 1000);
+    },
+
+    clearCronoVisual() {
+      if (this.crono.timer) {
+        clearInterval(this.crono.timer);
+        this.crono.timer = null;
+      }
+      this.crono.remaining = 0;
+    },
+
+    formatTime(seconds) {
+      const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const secs = String(seconds % 60).padStart(2, "0");
+      return `${mins}:${secs}`;
+    },
+
     async saveSchedule() {
       try {
         await api.post(`/schedule/${this.deviceId}`, this.schedule);
@@ -163,9 +287,9 @@ export default {
       }
     },
 
-    async toggleBulb() {
+    async toggleBulb({ power = null, fromCrono = false, duration = null, isCustom = false }) { 
       const estadoPrevio = !this.bulbState;
-      const newState = this.bulbState ? "ON" : "OFF";
+      const newState = power || (this.bulbState ? "ON" : "OFF");
 
       //const hsb = hexToHsb(this.color);
       //hsb.b = this.brightness;
@@ -178,15 +302,21 @@ export default {
         const response = await api.post(`/devices/${this.deviceId}/bulbRGB/toggle`, { 
           power: newState,
           //hsbColor: hsb
+          fromCrono,
+          duration,
+          isCustom
          });
         
         if (!response.data.success) {
           throw new Error(response.data.message || "Error desconocido");
         }
+
+        return response.data;
       } catch (error) {
           console.error("❌ Error al cambiar estado de la bombilla", error);
           this.hasError = true;
           this.bulbState = estadoPrevio;
+          return { success: false, message: error.message || "Error al cambiar estado de la bombilla" };
       } finally {
           this.isLoading = false;
       }
@@ -230,7 +360,53 @@ export default {
 
     removeSlot(index) {
       this.schedule.slots.splice(index, 1);
-    }
+    },
+
+    openModal() {
+      this.showModal = true;
+      if (this.activeTab === "schedule") {
+        this.$nextTick(() => {
+          this.$refs.planner?.fetchAndSetRemainingTime(this.deviceId);
+        });
+      }
+    },
+
+    async activateCrono({ duration, isCustom }) {
+      if (this.bulbState) {
+        // Ya está encendida → solo persistir crono
+        try {
+          const response = await api.post(`/crono/${this.deviceId}/crono`, { duration, isCustom });
+          return response.data;
+        } catch (err) {
+          console.error("❌ Error al persistir crono:", err);
+          return { success: false, message: "Error al persistir crono" };
+        }
+      } else {
+        // Encender con flag de crono
+        return await this.toggleBulb({
+          power: "ON",
+          fromCrono: true,
+          duration,
+          isCustom
+        });
+      }
+    },
+
+    async deactivateCrono() {
+      this.isLoading = true;
+
+      try {
+        return await this.toggleBulb({
+          power: "OFF",
+          fromCrono: true
+        });
+      } catch (err) {
+        console.error("❌ Error al desactivar crono:", err);
+        return { success: false, message: "Error al desactivar crono" };
+      } finally {
+        this.isLoading = false;
+      }
+    },
   }
 };
 
@@ -514,5 +690,31 @@ input:checked + .slider:before {
   color: #007bff;
   font-weight: 600;
   border-bottom: 2px solid #007bff;
+}
+
+/* Icono crono en esquina inferior derecha */
+.crono-icon {
+  position: absolute;
+  bottom: 3px;
+  right: 0px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: orange;
+  animation: blink 3s infinite;
+}
+
+@keyframes blink {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0; }
+}
+
+.crono-remaining {
+  position: absolute;
+  bottom: -13px;
+  right: 0px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: orange;
+  animation: blink 3s infinite;
 }
 </style>

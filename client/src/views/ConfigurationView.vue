@@ -1,5 +1,5 @@
 <template>
-  <div v-if="isRoleReady" class="configuration">
+  <div class="configuration">
     <h1>⚙️ Configuración</h1>
 
     <div class="configuration-wrapper">
@@ -11,16 +11,50 @@
           <h2>🔐 Cambiar Contraseña</h2>
         </div>
 
-        <div v-if="isLoading" class="blocker-overlay">
-          <div class="spinner"></div>
+        <div v-if="isSectionLoading" class="section-overlay">
+          <div class="section-spinner"></div>
         </div>
         <transition name="fade">
           <form v-show="passwordSectionVisible" @submit.prevent="handlePasswordChange" class="password-form">
             <input v-model="currentPassword" type="password" placeholder="Contraseña actual" required />
-            <input v-model="newPassword" type="password" placeholder="Nueva contraseña" required />
-            <input v-model="confirmPassword" type="password" placeholder="Repetir nueva contraseña" required />
+            <!-- <input v-model="newPassword" type="password" placeholder="Nueva contraseña" required /> -->
 
-            <button type="submit">
+            <!-- Nueva contraseña -->
+            <div class="input-wrapper">
+              <input
+                :type="showPassword ? 'text' : 'password'"
+                v-model="newPassword"
+                placeholder="Nueva contraseña"
+                @focus="passwordFocused = true"
+                @blur="passwordFocused = false"
+                required
+              />
+              <span class="toggle-password" @click="showPassword = !showPassword">
+                <i :class="showPassword ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+              </span>
+            </div>
+
+            <!-- Requisitos compactos -->
+            <ul v-if="passwordFocused && passwordHints.length" class="password-hints">
+              <li v-for="(hint, i) in passwordHints" :key="i">{{ hint }}</li>
+            </ul>
+
+            <!-- <input v-model="confirmPassword" type="password" placeholder="Repetir nueva contraseña" required /> -->
+
+            <!-- Confirmar contraseña -->
+            <div class="input-wrapper">
+              <input
+                :type="showConfirmPassword ? 'text' : 'password'"
+                v-model="confirmPassword"
+                placeholder="Repetir nueva contraseña"
+                required
+              />
+              <span class="toggle-password" @click="showConfirmPassword = !showConfirmPassword">
+                <i :class="showConfirmPassword ? 'pi pi-eye-slash' : 'pi pi-eye'"></i>
+              </span>
+            </div>
+
+            <button type="submit" :disabled="isSubmitDisabled">
               <span>Actualizar</span>
             </button>
 
@@ -36,7 +70,7 @@
         <!-- Activar/Desactivar registro de usuarios -->
         <div class="toggle-row">
           <label class="switch-label">
-            <input type="checkbox" v-model="allowRegistration" @change="handleConfigUpdate" />
+            <input type="checkbox" v-model="allowRegistration" @change="handleConfigUpdate()" />
             <span class="slider"></span>
             <span class="toggle-text">Permitir nuevos registros de usuario</span>
           </label>
@@ -45,7 +79,7 @@
         <!-- Modo mantenimiento -->
         <div class="toggle-row">
           <label class="switch-label">
-            <input type="checkbox" v-model="maintenanceMode" @change="handleConfigUpdate" />
+            <input type="checkbox" v-model="maintenanceMode" @change="handleConfigUpdate()" />
             <span class="slider"></span>
             <span class="toggle-text">Activar modo mantenimiento</span>
           </label>
@@ -68,7 +102,7 @@
 
           <div class="tab-content">
             <div v-if="activeTab === 'Usuarios'">
-              <UserManager />
+              <UserManager ref="userManagerRef" />
             </div>
 
             <div v-if="activeTab === 'Roles'">
@@ -82,6 +116,32 @@
         </section>
 
         <!-- Sección especial para superusuarios -->
+        <!-- Configuración de números de teléfono para llamadas automaticas -->
+        <div v-if="isSUser">
+          <section class="card phone-section">
+            <h3>📞 Números de teléfono para llamadas</h3>
+
+            <div class="phone-list">
+              <div
+                v-for="(num, index) in phoneNumbers"
+                :key="index"
+                class="number-entry"
+              >
+                <input v-model="phoneNumbers[index]" placeholder="+34..." />
+                <button @click="removePhoneNumber(index)" class="delete-btn" title="Eliminar">
+                  <i class="pi pi-trash"></i>
+                </button>
+              </div>
+              <div class="phone-actions">
+                <button class="phone-action" @click="addPhoneNumber">➕ Añadir</button>
+                <button class="phone-action btn-success" @click="savePhoneNumbers">Guardar</button>
+              </div>
+            </div>
+
+            <p v-if="numberError" class="error-msg">{{ numberError }}</p>
+          </section>
+        </div>
+
         <div v-if="isSUser" class="danger-zone">
           <h3>⚠️ Eliminar Base de Datos</h3>
           <p>¡Este paso eliminará <strong>permanentemente</strong> toda la base de datos!</p>
@@ -90,17 +150,12 @@
       </section>
     </div>
   </div>
-
-  <!-- Spinner mientras se espera el rol -->
-  <div v-else class="loading-role">
-    <p>Cargando configuración...</p>
-    <div class="spinner"></div>
-  </div>
 </template>
 
 <script>
 import { defineComponent, ref, onMounted, computed } from 'vue';
 import { getSystemConfig, updateSystemConfig } from '@/api/systemConfig';
+import { getPhoneNumbers } from '@/api/devices';
 import { changePassword, deleteDatabase } from '@/api/auth';
 import { useSessionStore, useAuthStore } from '@/store/mainStore';
 import UserManager from '@/components/RBAC/UserManager.vue';
@@ -116,29 +171,36 @@ export default defineComponent({
 
     const isAdmin = computed(() => authStore.role?.includes('admin') ?? false);
     const isSUser = computed(() => authStore.role?.includes('s-user') ?? false);
-    const isRoleReady = computed(() => authStore.role !== null);
 
     const tabs = ['Usuarios', 'Roles', 'Dispositivos'];
     const activeTab = ref('Usuarios');
 
     // Cambio de contraseña
     const passwordSectionVisible = ref(false);
-    const isLoading = ref(false);
+    const isSectionLoading = ref(false);
     const currentPassword = ref('');
     const newPassword = ref('');
     const confirmPassword = ref('');
     const passwordMessage = ref('');
+    const passwordFocused = ref(false);
+    const showPassword = ref(false);
+    const showConfirmPassword = ref(false);
+
+    const phoneNumbers = ref([]);
+    const numberError = ref('');
+
+    const userManagerRef = ref(null);
 
     function togglePasswordSection() {
       passwordSectionVisible.value = !passwordSectionVisible.value;
     }
 
     async function handlePasswordChange() {
-      isLoading.value = true;
+      isSectionLoading.value = true;
 
       if (newPassword.value !== confirmPassword.value) {
         passwordMessage.value = '❌ Las contraseñas no coinciden.';
-        isLoading.value = false;
+        isSectionLoading.value = false;
         return;
       }
 
@@ -154,9 +216,22 @@ export default defineComponent({
           '❌ Error al cambiar la contraseña: ' +
           (err.response?.data?.message || err.message);
       } finally {
-        isLoading.value = false;
+        isSectionLoading.value = false;
       }
     }
+
+    const passwordHints = computed(() => {
+      const p = newPassword.value || '';
+      const hints = [];
+      if (p.length < 3) hints.push('Mínimo 3 caracteres.');
+      if (!/[a-z]/.test(p)) hints.push('Debe tener una minúscula.');
+      if (!/[A-Z]/.test(p)) hints.push('Debe tener una mayúscula.');
+      if (!/[0-9]/.test(p)) hints.push('Debe tener un número.');
+      return hints;
+    });
+
+    const isPasswordValid = computed(() => passwordHints.value.length === 0);
+    const isSubmitDisabled = computed(() => !isPasswordValid.value || newPassword.value !== confirmPassword.value);
 
     // Configuración general
     const allowRegistration = ref(false);
@@ -177,13 +252,25 @@ export default defineComponent({
     async function handleConfigUpdate() {
       try {
         sessionStore.setLoading(true);
+        const currentConfig = await getSystemConfig();
+        const wasMaintenance = currentConfig.maintenanceMode;
+
         await updateSystemConfig({
           allowRegistration: allowRegistration.value,
           maintenanceMode: maintenanceMode.value,
         });
-        sessionStore.setLoading(false);
+
+        // Si activamos modo mantenimiento, se expulsan a todos los usuarios salvo admin's
+        if (!wasMaintenance && maintenanceMode.value) {
+          if (activeTab.value === 'Usuarios' && userManagerRef.value?.refreshUserList) {
+            alert("Todos los usuarios han sido expulsados");
+            await userManagerRef.value.refreshUserList();
+          }
+        }
       } catch (e) {
         console.error('Error actualizando configuración del sistema:', e);
+      } finally {
+        sessionStore.setLoading(false);
       }
     }
 
@@ -198,21 +285,85 @@ export default defineComponent({
       try {
         await deleteDatabase();
         alert('Base de datos eliminada correctamente');
-        await authStore.logout();
+        await sessionStore.logout();
       } catch (err) {
         console.error('Error al eliminar la base de datos:', err);
         alert('No se pudo eliminar la base de datos');
       }
     }
 
-    onMounted(() => {
+    function addPhoneNumber() {
+      // Si ya existe un campo vacío, no dejar añadir más
+      if (phoneNumbers.value.includes('')) {
+        numberError.value = '❌ Ya hay un campo vacío. Complétalo antes de añadir otro.';
+        return;
+      }
+
+      // Si es duplicado, no agregar
+      const duplicates = phoneNumbers.value.some((num, idx, arr) => arr.indexOf(num) !== idx);
+      if (duplicates) {
+        numberError.value = '❌ Existen números duplicados. Corrige antes de añadir más.';
+        return;
+      }
+
+      numberError.value = '';
+      phoneNumbers.value.push('');
+    }
+
+    function removePhoneNumber(index) {
+      phoneNumbers.value.splice(index, 1);
+      numberError.value = '';
+    }
+
+    async function savePhoneNumbers() {
+      const cleaned = phoneNumbers.value.map(n => n.trim()).filter(n => n !== '');
+
+      const hasDuplicates = new Set(cleaned).size !== cleaned.length;
+      if (hasDuplicates) {
+        numberError.value = '❌ No se permiten números duplicados.';
+        return;
+      }
+
+      if (cleaned.some(n => !/^\+?\d{8,15}$/.test(n))) {
+        numberError.value = '❌ Algún número tiene formato inválido.';
+        return;
+      }
+
+      try {
+        sessionStore.setLoading(true);
+        await updateSystemConfig({ phoneNumbers: cleaned });
+        numberError.value = '✅ Números actualizados correctamente.';
+      } catch (err) {
+        console.error('Error al guardar números:', err);
+        numberError.value = '❌ Error al guardar números.';
+      } finally {
+        sessionStore.setLoading(false);
+      }
+    }
+
+    onMounted(async ()=> {
       if (isAdmin.value) {
         checkSystemConfig();
       }
+
+      if (isSUser.value) {
+        phoneNumbers.value = await getPhoneNumbers();
+      }
     });
 
+    /*
+    watch(maintenanceMode, async (newVal, oldVal) => {
+      if (!oldVal && newVal) {
+        console.log("Activado modo mantenimiento. Refrescando usuarios...");
+        if (activeTab.value === 'Usuarios' && userManagerRef.value?.refreshUserList) {
+          await userManagerRef.value.refreshUserList();
+        }
+      }
+    });
+    */
+
     return {
-      isLoading,  
+      isSectionLoading,  
       passwordSectionVisible,
 
       tabs,
@@ -221,7 +372,6 @@ export default defineComponent({
       // Roles
       isAdmin,
       isSUser,
-      isRoleReady,
 
       // Contraseña
       togglePasswordSection,
@@ -230,6 +380,11 @@ export default defineComponent({
       confirmPassword,
       passwordMessage,
       handlePasswordChange,
+      passwordFocused,
+      showPassword,
+      showConfirmPassword,
+      passwordHints,
+      isSubmitDisabled,
 
       // Config
       allowRegistration,
@@ -238,6 +393,15 @@ export default defineComponent({
 
       // BBDD
       confirmDeleteDB,
+
+      phoneNumbers,
+      numberError,
+      addPhoneNumber,
+      removePhoneNumber,
+      savePhoneNumbers,
+
+      // Referencia a UserManager
+      userManagerRef
     };
   },
 });

@@ -21,11 +21,19 @@
           <span class="slider"></span>
         </label>
 
-        <button class="config-button" @click="showModal = true" :disabled="hasError || isLoading">⚙️</button>
+        <button class="config-button" @click="openModal" :disabled="hasError || isLoading">⚙️</button>
       </div>
 
       <span class="toggle-state">{{ switchState ? "ON" : "OFF" }}</span>
     </div>
+
+    <!-- Icono parpadeante crono activo -->
+    <i
+      v-if="crono.active"
+      class="pi pi-clock crono-icon"
+    >
+    </i>
+    <span v-if="crono.active" class="crono-remaining">{{ formatTime(crono.remaining) }}</span>
 
     <!-- Modal de Planificacion -->
     <teleport to="#modals">
@@ -34,9 +42,13 @@
           <h3>Planificación de {{ deviceName }}</h3>
 
           <SchedulePlanner
+            ref="planner"
             :value="schedule"
+            :deviceId="deviceId"
             @update="schedule = $event"
             @save="saveSchedule"
+            :onActivateCrono="activateCrono"
+            :onDeactivateCrono="deactivateCrono"
           />
 
           <div class="modal-buttons">
@@ -68,6 +80,7 @@ export default {
       default: "Switch",
     }
   },
+
   data() {
     return {
       socket: null,
@@ -77,18 +90,37 @@ export default {
       hasError: false,
       timeoutId: null,
       showModal: false,
-      schedule: { days: [], slots: [], enforceOutsideSlot: false }
+      schedule: { days: [], slots: [], enforceOutsideSlot: false },
+      crono: {
+        active: false,
+        remaining: 0,
+        timer: null
+      }
     };
   },
+  
   async mounted() {
     this.setupSocket();
     this.fetchInitialStateWithTimeout();
     await this.fetchSchedule();
+    await this.fetchCronoStatus();
   },
+
   beforeUnmount() {
-    if (this.socket) this.socket.disconnect();
+    if (this.socket)
+    {
+      this.socket.off('crono:update');
+      this.socket.off('switch-status');
+      this.socket.disconnect();
+      this.socket = null;
+    }
+
     if (this.timeoutId) clearTimeout(this.timeoutId);
+
+    this.clearCronoVisual();
+    this.crono.active = false;
   },
+  
   methods: {
     setupSocket() {
       this.socket = io(window.location.origin, {
@@ -100,7 +132,7 @@ export default {
         if (data.deviceId === this.deviceId) {
           console.log("🔄 Estado del switch vía WS:", data);
 
-          // ⚠️ Maneja el estado ON/OFF solo si viene explícito
+          //Maneja el estado ON/OFF solo si viene explícito
           if (typeof data.state === "boolean") {
             this.switchState = data.state;
           }
@@ -109,12 +141,25 @@ export default {
             this.isOnline = data.isOnline;
             this.hasError = !data.isOnline;
 
-            // 🔄 Si vuelve online, también desactiva el spinner
+            //Si vuelve online, también desactiva el spinner
             if (data.isOnline) {
               this.hasError = false;
             }
           }
         }
+      });
+
+      this.socket.on("crono:update", (data) => {
+        if (data.deviceId !== this.deviceId) return;
+
+        if (!data.active) {
+          this.crono.active = false;
+          this.clearCronoVisual();
+          return;
+        }
+
+        this.crono.active = true;
+        this.setRemainingTime(data.remaining);
       });
 
       /*
@@ -126,6 +171,74 @@ export default {
         }
       });
       */
+    },
+
+    async fetchCronoStatus() {
+      try {
+        const { data } = await api.get(`/crono/${this.deviceId}/crono`);
+
+        if (!data.active) {
+          this.crono.active = false;
+          this.clearCronoVisual();
+          return;
+        }
+
+        this.crono.active = true;
+        this.setRemainingTime(data.remaining);
+      } catch (err) {
+        console.error("❌ Error al consultar estado inicial de crono:", err);
+        this.crono.active = false;
+        this.clearCronoVisual();
+      }
+    },
+
+    setRemainingTime(seconds) {
+      // Evitar timers duplicados
+      if (this.crono.timer) {
+        clearInterval(this.crono.timer);
+        this.crono.timer = null;
+      }
+
+      this.crono.remaining = seconds;
+
+      // Inicia temporizador visual
+      this.crono.timer = setInterval(async () => {
+        if (this.crono.remaining > 0) {
+          this.crono.remaining--;
+        } else {
+          // Llegó a 0
+          try {
+            const { data } = await api.get(`/crono/${this.deviceId}/crono`);
+
+            if (!data.active) {
+              this.clearCronoVisual();
+              this.crono.active = false;
+              return;
+            }
+            // Sigue activo, reprogramar
+            this.setRemainingTime(data.remaining);
+
+          } catch (err) {
+            console.error("❌ Error verificando estado de crono:", err);
+            this.clearCronoVisual();
+            this.crono.active = false;
+          }
+        }
+      }, 1000);
+    },
+
+    clearCronoVisual() {
+      if (this.crono.timer) {
+        clearInterval(this.crono.timer);
+        this.crono.timer = null;
+      }
+      this.crono.remaining = 0;
+    },
+
+    formatTime(seconds) {
+      const mins = String(Math.floor(seconds / 60)).padStart(2, "0");
+      const secs = String(seconds % 60).padStart(2, "0");
+      return `${mins}:${secs}`;
     },
 
     async fetchInitialStateWithTimeout() {
@@ -188,24 +301,104 @@ export default {
       }
     },
 
-    async toggleSwitch(event) {
-      const newState = event.target.checked;
+    async toggleSwitch({ target, fromCrono = false, duration = null, isCustom = false }) {
+      const newState = target.checked;
       const previousState = !newState;
 
-      this.switchState = newState;
+      if (!fromCrono) {
+        this.switchState = newState; // Cambio inmediato si es manual y no por crono
+      }
+
       this.isLoading = true;
 
       try {
         const response = await api.post(`/devices/${this.deviceId}/switch/toggle`, {
           estado: newState ? "ON" : "OFF",
+          fromCrono, //parametros del Crono
+          duration, //Parametros del Crono
+          isCustom: isCustom
         });
 
         if (!response.data.success) {
           throw new Error(response.data.message || "Error en cambio de estado");
         }
+
+        //Si es por crono, nos aseguramos que la operación fue bien previamente
+        if (fromCrono) {
+          this.switchState = newState;
+        }
+
+        return response.data; 
       } catch (error) {
         console.error("❌ Error al cambiar estado:", error);
         this.switchState = previousState;
+        return { success: false, message: error.message || "Error en toggleSwitch" };
+      } finally {
+        this.isLoading = false;
+      }
+    },
+
+    async openModal() {
+      this.showModal = true;
+
+      // Esperamos al siguiente tick para que el componente se monte y se pueda acceder al ref
+      /*this.$nextTick(async () => {
+        await this.fetchCronoStatus(); // si hay crono activo, se enviará al modal
+      });
+      */
+      this.$nextTick(() => {
+        this.$refs.planner?.fetchAndSetRemainingTime(this.deviceId);
+      });
+    },
+
+    /*
+    async fetchCronoStatus() {
+      try {
+        const { data } = await api.get(`/devices/${this.deviceId}/crono`);
+
+        if (data.active) {
+          console.log("Crono data: ", data);
+          // Pasar tiempo restante a SchedulePlanner
+          this.$refs.planner?.setRemainingTime(data.remaining, data.isCustom);
+        }
+      } catch (err) {
+        console.error("❌ Error consultando crono:", err);
+      }
+    },
+    */
+
+    async activateCrono({ duration, isCustom }) {
+      if (this.switchState) {
+        //Dispositivo ya encendido. Solo es necesario persistir en BBDD el crono
+        try {
+          const response = await api.post(`/crono/${this.deviceId}/crono`, { duration, isCustom });
+
+          return response.data;
+        } catch (err) {
+          console.error("❌ Error al persistir crono:", err);
+          return { success: false, message: "Error al persistir crono" };
+        }
+      } else {
+        //Encender. Simular toggle pero con flag para control de flujo
+        return await this.toggleSwitch({
+          target: { checked: true },
+          fromCrono: true,
+          duration,
+          isCustom  
+        });
+      }
+    },
+
+    async deactivateCrono() {
+      this.isLoading = true;
+      try {
+        return await this.toggleSwitch({
+          target: { checked: false },
+          fromCrono: true
+        });
+      } catch (err) {
+        console.error("❌ Error al desactivar crono:", err);
+        return { success: false, message: "Error al desactivar crono" };
       } finally {
         this.isLoading = false;
       }
@@ -332,7 +525,7 @@ input:checked + .slider:before {
 }
 
 .modal-container h3 {
-  margin-top: 0;
+  margin: 0;
 }
 
 .modal-container button {
@@ -422,5 +615,31 @@ input:checked + .slider:before {
 .retry-button:disabled {
   opacity: 0.5;
   cursor: not-allowed;
+}
+
+/* Icono crono en esquina inferior derecha */
+.crono-icon {
+  position: absolute;
+  bottom: 3px;
+  right: 0px;
+  font-size: 1.3rem;
+  font-weight: bold;
+  color: orange;
+  animation: blink 3s infinite;
+}
+
+@keyframes blink {
+  0%, 50%, 100% { opacity: 1; }
+  25%, 75% { opacity: 0; }
+}
+
+.crono-remaining {
+  position: absolute;
+  bottom: -13px;
+  right: 0px;
+  font-size: 0.8rem;
+  font-weight: bold;
+  color: orange;
+  animation: blink 3s infinite;
 }
 </style>
