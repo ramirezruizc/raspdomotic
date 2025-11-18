@@ -21,7 +21,7 @@
                 <template #item="{ element: device }">
                   <div class="device-container">
                     <div class="device-type-icon">
-                      <i :class="getIcon(device.type)"></i>
+                      <i :class="getIcon(device)"></i>
                     </div>
                     <span class="drag-handle"><i class="pi pi-ellipsis-v"></i></span>
                     <div class="device-content">
@@ -119,7 +119,7 @@ export default {
               validDevices.push({
                 id: savedDevice.id, // Usamos el ID antiguo
                 type: savedDevice.type,
-                deviceId: match.id,             // ID real (ej: ESPURNA-SWITCH1)
+                deviceId: match.id, // ID real (ej: ESPURNA-SWITCH1)
                 deviceName: match.name
               });
               usedIds.add(match.originalId); // Marcamos como usado
@@ -150,7 +150,7 @@ export default {
 
             // Generar nuevo ID único
             const newId = `temp-id-${tempIdCounter++}`;
-            categoryGroup.devices.push({ id: newId, type: dev.type, deviceId: dev.id });
+            categoryGroup.devices.push({ id: newId, type: dev.type, deviceId: dev.id, deviceName: dev.name });
             usedIds.add(dev.originalId);
           }
         }
@@ -180,8 +180,28 @@ export default {
       return componentMap[tipo] || null;
     },
 
-    getIcon(type) {
-      switch (type) {
+    getIcon(device) {
+      if (device.type === 'InfoDevice') {
+        // Heuristica basada en deviceId (cuidado con id, que es del layout) y name del device para deducir icono mas apropiado en InfoDevice
+        console.log('Icon heuristics →', {
+          type: device.type,
+          deviceId: device.deviceId,
+          deviceName: device.deviceName
+        });
+
+        const text = (device.deviceId || device.deviceName || '').toLowerCase();
+
+        if (text.includes('temp') || text.includes('temperatura') ||
+          text.includes('hum')  || text.includes('humedad') ||
+          text.includes('aht10')|| text.includes('dht22'))
+        {
+            return 'pi pi-gauge';
+        }
+
+        return 'pi pi-shield';
+      }
+
+      switch (device.type) {
         case 'BulbRGBDevice': return 'pi pi-lightbulb';
         case 'SwitchDevice': return 'pi pi-power-off';
         case 'AirConditioningDevice': return 'pi pi-sun';

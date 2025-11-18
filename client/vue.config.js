@@ -33,10 +33,9 @@ module.exports = defineConfig({
       }
     }
     
-    
   },
   pwa: {
-    name: 'RaspDomotic', // Aquí cambia el título
+    name: 'RaspDomotic', // Aquí se cambia el título
     /*workboxPluginMode: 'GenerateSW', // Asegura que se genera automáticamente
     workboxOptions: {
       skipWaiting: true,

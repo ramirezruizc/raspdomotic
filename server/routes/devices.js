@@ -635,6 +635,37 @@ module.exports = (mqttClient, io) => {
         }
     });
 
+    // Ruta GET para obtener info de un device InfoDevice (contactor, sensor PIR, sensor temperatura, etc.)
+    router.get('/:deviceId/info', authMiddleware, async (req, res) => {
+        try {
+            const { deviceId } = req.params;
+            const device = getDeviceById(deviceId);
+
+            if (!device) return res.status(404).json({ success:false, message:'Dispositivo no encontrado' });
+
+            const st = getDeviceState(deviceId) || {};
+            const viewCfg = device.view || {};
+
+            //Esquema de configuracion en NODE-Red primary/extra
+            const view = {
+                primary: Array.isArray(viewCfg.primary) ? viewCfg.primary : [],
+                extra:   Array.isArray(viewCfg.extra)   ? viewCfg.extra   : []
+            };
+
+            return res.json({
+                success: true,
+                deviceId,
+                deviceName: device.name || deviceId,
+                isOnline: !!st.isOnline,
+                values: st.values || {},
+                view: device.view || { primary: [], extra: [] }
+            });
+        } catch (err) {
+            console.error('❌ /info error:', err);
+            res.status(500).json({ success:false, message:'Error en el servidor' });
+        }
+    });
+
     // Obtener los dispositivos registrados en BBDD con sus accessRoles
     router.get('/get-device-access', authMiddleware, isAdminMiddleware, async (req, res) => {
         try {

@@ -1,6 +1,6 @@
   const mqtt = require('mqtt');
-  const { getDevices, getDeviceById, getDevicesByFirmware, getDeviceByTopic, setDeviceState } = require('../device/deviceRegistry');
-  const { getDeviceState } = require('../../services/device/deviceRegistry');
+  const { getDevices, getDeviceById, getDevicesByFirmware,
+          getDeviceByTopic, setDeviceState, getDeviceState } = require('../../services/device/deviceRegistry');
 
   let client;
   let io;
@@ -55,6 +55,34 @@
             console.error('❌ Error al suscribirse al topic del relé:', err);
           }
         });
+      });
+
+      //Suscripciones para InfoDevice (Zigbee2MQTT)
+      const z2mInfos = getDevicesByFirmware('zigbee2mqtt').filter(d => d.type === 'InfoDevice');
+
+      z2mInfos.forEach(device => {
+        const stateTopic = device.topics?.state;
+
+        if (stateTopic) {
+          client.subscribe(stateTopic, err => {
+            if (err) return console.error('❌ Sub state Z2M:', err);
+            console.log(`📡 Suscrito a topic Z2M: ${stateTopic}`);
+          });
+        }
+      });
+
+      //Suscripciones para InfoDevice (custom)
+      const customInfos = getDevicesByFirmware('custom').filter(d => d.type === 'InfoDevice');
+
+      customInfos.forEach(device => {
+        const stateTopic = device.topics?.state;
+
+        if (stateTopic) {
+          client.subscribe(stateTopic, err => {
+            if (err) return console.error('❌ Sub state Custom:', err);
+            console.log(`📡 Suscrito a topic custom: ${stateTopic}`);
+          });
+        }
       });
     });
 
@@ -158,6 +186,31 @@
 
           } catch (e) {
             console.error(`❌ Error al procesar mensaje Tasmota: ${message}`, e);
+          }
+        }
+
+        //Topic para capturar mensajes con procedencia en zigbee2mqtt o personalizados
+        //como por ejemplo un circuito con Sketch en ESP01S y sensor ATH10 para temperatura/humedad)
+        if ((device && device.firmware === 'zigbee2mqtt' || device && device.firmware === 'custom')
+          && device.type === 'InfoDevice') {
+          // estado JSON principal
+          if (topic === device.topics?.state) {
+            try {
+              const payload = JSON.parse(message);
+
+              //Asumimos que el mensaje viene con todos los atributos/campos refrescados
+              setDeviceState(device.id, { isOnline: true, values: payload });
+
+              io?.emit('info-update', {
+                deviceId: device.id,
+                values: payload,
+                isOnline: true
+              });
+            } catch (e) {
+              console.error('❌ JSON inválido Z2M:', e, 'msg:', message);
+            }
+            
+            return;
           }
         }
       }

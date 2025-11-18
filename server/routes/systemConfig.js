@@ -54,13 +54,21 @@ router.get('/', async (req, res) => {
 
     // Path de trabajo local del contenedor Docker de Node-RED
     const noderedDataPath = path.join(os.homedir(), 'modules/docker/containers/node-red/data');
-    const filePath = path.join(noderedDataPath, 'system-user.json');
+    const systemUserfilePath = path.join(noderedDataPath, 'system-user.json');
+    const phoneNumbersPath = path.join(noderedDataPath, 'phone-numbers.json');
 
     try {
-      fs.writeFileSync(filePath, JSON.stringify({ id: systemUser._id.toString() }, null, 2));
-      console.log('✅ System user ID guardado en fichero:', filePath);
+      fs.writeFileSync(systemUserfilePath, JSON.stringify({ id: systemUser._id.toString() }, null, 2));
+      console.log('✅ System user ID guardado en fichero:', systemUserfilePath);
     } catch (err) {
       console.error('❌ Error al escribir system-user.json:', err.message);
+    }
+
+    try {
+      fs.writeFileSync(phoneNumbersPath, '{}\n', { encoding: 'utf8' });
+      console.log('✅ Fichero phone-numbers.json (vacio {}) creado:', phoneNumbersPath);
+    } catch (err) {
+      console.error('❌ Error al crear phone-numbers.json:', err.message);
     }
   }
  

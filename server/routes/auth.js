@@ -300,7 +300,7 @@ router.delete('/nuke-database', authMiddleware, isSUserMiddleware, async (req, r
   }
 });
 
-router.get('/users-list', async (req, res) => {
+router.get('/users-list', authMiddleware, isAdminMiddleware, async (req, res) => {
   try {
     const users = await User.find({}, 'username role isSystem blocked').lean();
     res.json(users);

@@ -2,7 +2,8 @@ import { defineAsyncComponent } from 'vue';
 
 //Listado de componentes diposnibles en el sistema
 const components = ['AlarmDevice', 'CameraDevice', 'BulbRGBDevice', 
-                    'BulbDevice', 'SwitchDevice', 'AirConditioningDevice'];
+                    'BulbDevice', 'SwitchDevice', 'AirConditioningDevice',
+                    'InfoDevice'];
 
 const componentMap = {};
 

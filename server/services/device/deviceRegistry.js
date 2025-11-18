@@ -3,13 +3,14 @@ const deviceStatusMap = {}; // Almacena estados: { [deviceId]: { relay: true, is
 
 function registryDevices(newDevices) {
   devices = newDevices.map(device => {
+    //Dispositivos ESPURNA
     if (device.firmware === 'espurna') {
       const base = device.id;
       const resolvedTopics = {};
 
       if (!device.topics) {
         console.warn(`⚠️ Dispositivo ESPURNA sin topics definidos: ${device.id}`);
-        return device; // lo devuelves sin modificar, y evitará crash
+        return device; // lo devolvemos sin modificar
       }
 
       //console.log("Paso por aqui");
@@ -26,7 +27,10 @@ function registryDevices(newDevices) {
       };
 
       return updatedDevice;
-    } else if (device.firmware === 'tasmota') {
+    }
+
+    //Dispositivos TASMOTA
+    if (device.firmware === 'tasmota') {
       const base = device.id;
       const resolvedTopics = {};
 
@@ -45,6 +49,15 @@ function registryDevices(newDevices) {
       };
 
       return updatedDevice;
+    }
+
+    //DISPOSITIVOS POR ZIGBEE2MQTT. Mantener topics tal cual completios
+    if (device.firmware === 'zigbee2mqtt' || device.firmware === 'custom') {
+      if (!device.topics?.state) {
+        console.warn(`⚠️ Z2M/custom sin topic 'state': ${device.id}`);
+      }
+
+      return { ...device, topics: { ...(device.topics || {}) } };
     }
 
     if (!device.topics) {
